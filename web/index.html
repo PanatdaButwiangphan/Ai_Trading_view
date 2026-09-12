@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AiTradingView Journal</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c; 
+      --text: #e8eef4;
+      --muted: #8b9aab;
+      --line: #2a3542;
+      --win: #3ecf8e;
+      --loss: #f07178;
+      --accent: #5b9fd4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "IBM Plex Sans Thai", sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1c3348 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.65rem;
+      color: var(--text);
+    }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.45;
+      max-width: 42rem;
+    }
+    .drop {
+      border: 1.5px dashed #3d5166;
+      background: color-mix(in srgb, var(--panel) 90%, transparent);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 1.25rem;
+    }
+    .drop.drag {
+      border-color: var(--accent);
+      background: #1e2d3c;
+    }
+    .drop p { margin: 0.35rem 0; color: var(--muted); }
+    .drop strong { color: var(--text); }
+    input[type="file"] { margin-top: 0.75rem; color: var(--muted); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+    }
+    .stat.today {
+      border-color: #3d6a8c;
+      background: #1a2836;
+    }
+    .stat .label { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.25rem; }
+    .stat .value { font-size: 1.25rem; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .stat .hint { color: var(--muted); font-size: 0.75rem; margin-top: 0.25rem; }
+    .win { color: var(--win); }
+    .loss { color: var(--loss); }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      margin-bottom: 0.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 0.55rem 0.7rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #212b36;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr.today-row td { background: rgba(91, 159, 212, 0.08); }
+    .empty {
+      color: var(--muted);
+      padding: 1.5rem;
+      text-align: center;
+    }
+    code {
+      background: #243140;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AiTradingView Journal</h1>
+    <p class="sub">
+      โหลดไฟล์ <code>AITV_journal.csv</code> จากโฟลเดอร์ Common Files ของ MT5
+      (<code>Terminal → File → Open Data Folder → Common\Files</code>)
+      แล้วดูสรุปรวม + สรุปรายวันอัตโนมัติ + ตารางไม้ที่ปิดแล้ว
+    </p>
+
+    <div class="drop" id="drop">
+      <p><strong>ลากไฟล์ CSV มาวางที่นี่</strong> หรือเลือกไฟล์</p>
+      <p>คอลัมน์: time, symbol, side, volume, price, sl, tp, pnl, swap, commission, comment, magic, deal</p>
+      <input id="file" type="file" accept=".csv,text/csv" />
+    </div>
+
+    <div class="stats">
+      <div class="stat today">
+        <div class="label">Today</div>
+        <div class="value" id="sTodayPnl">—</div>
+        <div class="hint" id="sTodayHint">ยังไม่มีข้อมูล</div>
+      </div>
+      <div class="stat"><div class="label">Trades (all)</div><div class="value" id="sTrades">0</div></div>
+      <div class="stat"><div class="label">Win rate</div><div class="value" id="sWin">—</div></div>
+      <div class="stat"><div class="label">Net PnL</div><div class="value" id="sPnl">0.00</div></div>
+      <div class="stat"><div class="label">Avg PnL</div><div class="value" id="sAvg">0.00</div></div>
+    </div>
+
+    <h2>Daily summary</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Trades</th>
+            <th>Wins</th>
+            <th>Win%</th>
+            <th>Net PnL</th>
+          </tr>
+        </thead>
+        <tbody id="dailyBody">
+          <tr><td colspan="5" class="empty">ยังไม่มีข้อมูล — อัปโหลด CSV</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Trades</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Vol</th>
+            <th>Price</th>
+            <th>SL</th>
+            <th>TP</th>
+            <th>PnL</th>
+            <th>Comment</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="9" class="empty">ยังไม่มีข้อมูล — อัปโหลด CSV</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const drop = document.getElementById("drop");
+    const fileInput = document.getElementById("file");
+    const tbody = document.getElementById("tbody");
+    const dailyBody = document.getElementById("dailyBody");
+
+    function parseCsv(text) {
+      const lines = text.replace(/^\uFEFF/, "").trim().split(/\r?\n/);
+      if (lines.length < 2) return [];
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const cols = lines[i].split(",");
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = (cols[idx] || "").trim(); });
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function num(v) {
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function rowPnl(r) {
+      return num(r.pnl) + num(r.swap) + num(r.commission);
+    }
+
+    /** MT5 time e.g. "2026.09.13 14:22:01" or ISO-like → "2026.09.13" */
+    function dayKey(timeStr) {
+      const s = String(timeStr || "").trim();
+      if (!s) return "";
+      const m = s.match(/^(\d{4}[./-]\d{2}[./-]\d{2})/);
+      if (m) return m[1].replace(/[/-]/g, ".");
+      return s.slice(0, 10).replace(/[/-]/g, ".");
+    }
+
+    function localTodayKey() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, "0");
+      const da = String(d.getDate()).padStart(2, "0");
+      return y + "." + mo + "." + da;
+    }
+
+    function groupByDay(rows) {
+      const map = new Map();
+      rows.forEach((r) => {
+        const key = dayKey(r.time);
+        if (!key) return;
+        if (!map.has(key)) {
+          map.set(key, { date: key, trades: 0, wins: 0, net: 0 });
+        }
+        const g = map.get(key);
+        const pnl = rowPnl(r);
+        g.trades += 1;
+        g.net += pnl;
+        if (pnl > 0) g.wins += 1;
+      });
+      return Array.from(map.values()).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    }
+
+    function renderDaily(days, highlightDate) {
+      if (!days.length) {
+        dailyBody.innerHTML = '<tr><td colspan="5" class="empty">ไฟล์ว่างหรือไม่มีแถวข้อมูล</td></tr>';
+        return;
+      }
+      dailyBody.innerHTML = days
+        .map((d) => {
+          const winPct = d.trades ? ((d.wins / d.trades) * 100).toFixed(1) + "%" : "—";
+          const cls = d.net >= 0 ? "win" : "loss";
+          const rowCls = d.date === highlightDate ? "today-row" : "";
+          return `<tr class="${rowCls}">
+            <td>${d.date}</td>
+            <td>${d.trades}</td>
+            <td>${d.wins}</td>
+            <td>${winPct}</td>
+            <td class="${cls}">${d.net.toFixed(2)}</td>
+          </tr>`;
+        })
+        .join("");
+    }
+
+    function renderToday(days) {
+      const todayEl = document.getElementById("sTodayPnl");
+      const hintEl = document.getElementById("sTodayHint");
+      const localToday = localTodayKey();
+      let day = days.find((d) => d.date === localToday);
+      let label = localToday;
+      let isLocal = true;
+      if (!day && days.length) {
+        day = days[0];
+        label = day.date;
+        isLocal = false;
+      }
+      if (!day) {
+        todayEl.textContent = "—";
+        todayEl.className = "value";
+        hintEl.textContent = "ยังไม่มีข้อมูล";
+        return label;
+      }
+      todayEl.textContent = day.net.toFixed(2);
+      todayEl.className = "value " + (day.net >= 0 ? "win" : "loss");
+      hintEl.textContent = isLocal
+        ? label + " · " + day.trades + " trades"
+        : "ล่าสุดในไฟล์ " + label + " · " + day.trades + " trades";
+      return label;
+    }
+
+    function render(rows) {
+      const trades = rows.length;
+      let wins = 0;
+      let net = 0;
+      rows.forEach((r) => {
+        const pnl = rowPnl(r);
+        net += pnl;
+        if (pnl > 0) wins++;
+      });
+      const winRate = trades ? ((wins / trades) * 100).toFixed(1) + "%" : "—";
+      const avg = trades ? net / trades : 0;
+
+      document.getElementById("sTrades").textContent = String(trades);
+      document.getElementById("sWin").textContent = winRate;
+      const pnlEl = document.getElementById("sPnl");
+      pnlEl.textContent = net.toFixed(2);
+      pnlEl.className = "value " + (net >= 0 ? "win" : "loss");
+      document.getElementById("sAvg").textContent = avg.toFixed(2);
+
+      const days = groupByDay(rows);
+      const highlight = renderToday(days);
+      renderDaily(days, highlight);
+
+      if (!trades) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">ไฟล์ว่างหรือไม่มีแถวข้อมูล</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows
+        .slice()
+        .reverse()
+        .map((r) => {
+          const pnl = rowPnl(r);
+          const cls = pnl >= 0 ? "win" : "loss";
+          return `<tr>
+            <td>${r.time || ""}</td>
+            <td>${r.symbol || ""}</td>
+            <td>${r.side || ""}</td>
+            <td>${r.volume || ""}</td>
+            <td>${r.price || ""}</td>
+            <td>${r.sl || ""}</td>
+            <td>${r.tp || ""}</td>
+            <td class="${cls}">${pnl.toFixed(2)}</td>
+            <td>${r.comment || ""}</td>
+          </tr>`;
+        })
+        .join("");
+    }
+
+    function loadFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          render(parseCsv(String(reader.result || "")));
+        } catch (e) {
+          tbody.innerHTML = `<tr><td colspan="9" class="empty">อ่านไฟล์ไม่สำเร็จ: ${e.message}</td></tr>`;
+          dailyBody.innerHTML = `<tr><td colspan="5" class="empty">อ่านไฟล์ไม่สำเร็จ</td></tr>`;
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    fileInput.addEventListener("change", () => loadFile(fileInput.files[0]));
+    ["dragenter", "dragover"].forEach((ev) => {
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.add("drag");
+      });
+    });
+    ["dragleave", "drop"].forEach((ev) => {
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.remove("drag");
+      });
+    });
+    drop.addEventListener("drop", (e) => {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      loadFile(f);
+    });
+  </script>
+</body>
+</html>

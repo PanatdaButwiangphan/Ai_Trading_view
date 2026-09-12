@@ -1,0 +1,10 @@
+# MetaEditor / MT5 build artifacts
+*.ex5
+*.ex4
+*.log
+*.bak
+.DS_Store
+Thumbs.db
+
+# Accidental nested clone folder (use this repo root instead)
+Ai_Trading_view/
