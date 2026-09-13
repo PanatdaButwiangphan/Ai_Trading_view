@@ -1,18 +1,18 @@
 //+------------------------------------------------------------------+
 //|                                              AiTradingView.mq5   |
-//|  v1.61: trade-allowed checks, block panel, CSV journal           |
+//|  v1.63: time-based profit close when hold exceeds limit          |
 //+------------------------------------------------------------------+
 #property copyright "AiTradingView"
 #property link      ""
-#property version   "1.61"
-#property description "Terminal/account trade guards, block reason panel, CSV journal"
+#property version   "1.63"
+#property description "ปิดกำไรตามเวลาเมื่อถือเกินและยังกำไร"
 
 #include <Trade/Trade.mqh>
 
 enum ENUM_TRADE_MODE
 {
-   MODE_TREND = 0, // Trend (H1/H4)
-   MODE_SCALP = 1  // Scalp (M1/M5)
+   MODE_TREND = 0, // เทรนด์ (H1/H4)
+   MODE_SCALP = 1  // สเกลป์ (M1/M5)
 };
 
 enum ENUM_SIGNAL
@@ -35,102 +35,116 @@ enum ENUM_MTF_TF
    MTF_M15 = 1  // M15
 };
 
-//--- General
-input group "=== General ==="
-input ENUM_TRADE_MODE InpTradeMode       = MODE_SCALP; // Trade mode
-input bool            InpAutoTrade       = false;      // Auto open orders
-input ulong           InpMagic           = 20260912;   // Magic number
-input int             InpMaxSpreadPoints = 50;         // Max spread (points)
-input bool            InpAlertOnSignal   = true;       // Alert on new signal
-input bool            InpShowIndicators  = true;       // Attach indicators to chart
-input bool            InpManageManualOrders = true;    // Set SL/TP on manual orders
-input int             InpMaxAccountEaPositions = 2;    // Max open EA positions across all symbols
-input bool            InpJournalCsv            = true; // Append closed EA deals to AITV_journal.csv
+//--- ทั่วไป
+input group "=== ทั่วไป ==="
+input ENUM_TRADE_MODE InpTradeMode       = MODE_SCALP; // โหมดเทรด
+input bool            InpAutoTrade       = false;      // เปิดออเดอร์อัตโนมัติ
+input ulong           InpMagic           = 20260912;   // หมายเลข Magic
+input int             InpMaxSpreadPoints = 50;         // สเปรดสูงสุด (points)
+input bool            InpAlertOnSignal   = true;       // แจ้งเตือนเมื่อมีสัญญาณใหม่
+input bool            InpShowIndicators  = true;       // ติดอินดิเคเตอร์บนชาร์ต
+input bool            InpManageManualOrders = true;    // ใส่ SL/TP ให้ออเดอร์มือ
+input int             InpMaxAccountEaPositions = 2;    // ไม้สูงสุดของ EA ทั้งบัญชี (ทุกคู่)
+input bool            InpJournalCsv            = true; // บันทึกไม้ปิดลง AITV_journal.csv
 
 //--- MTF
-input group "=== MTF Confirm (M1 entry) ==="
-input bool         InpUseMtfFilter  = true;   // Require higher TF bias
-input ENUM_MTF_TF  InpMtfTimeframe  = MTF_M5; // Confirm timeframe
+input group "=== ยืนยันไทม์เฟรมสูง (เข้า M1) ==="
+input bool         InpUseMtfFilter  = true;   // ต้องสอดคล้องทิศไทม์เฟรมสูง
+input ENUM_MTF_TF  InpMtfTimeframe  = MTF_M5; // ไทม์เฟรมยืนยัน
 
-//--- Risk
-input group "=== Risk & Lot ==="
-input double InpLot            = 0.01;  // Fixed lot size
-input bool   InpUseRiskPercent = false; // Size lot by risk %
-input double InpRiskPercent    = 1.0;   // Risk percent of balance
+//--- ความเสี่ยง / lot
+input group "=== ความเสี่ยงและ Lot ==="
+input double InpLot            = 0.01;  // Lot คงที่
+input bool   InpUseRiskPercent = false; // คำนวณ lot จาก % ความเสี่ยง
+input double InpRiskPercent    = 1.0;   // ความเสี่ยง % ของยอดเงิน
 
-//--- Daily risk
-input group "=== Daily Risk ==="
-input bool   InpUseDailyLossLimit   = true; // Stop auto after daily loss
-input double InpMaxDailyLossPercent = 3.0;  // Max daily loss % of day-start balance
+//--- ความเสี่ยงรายวัน
+input group "=== ความเสี่ยงรายวัน ==="
+input bool   InpUseDailyLossLimit   = true; // หยุดออโต้เมื่อขาดทุนรายวันเกิน
+input double InpMaxDailyLossPercent = 3.0;  // ขาดทุนรายวันสูงสุด % ของยอดต้นวัน
 
-//--- Period risk
-input group "=== Period Risk ==="
-input bool   InpUseWeeklyLossLimit    = true;  // Stop auto after weekly equity DD
-input double InpMaxWeeklyLossPercent  = 8.0;   // Max weekly loss % of week-start balance
-input bool   InpUseMonthlyLossLimit   = true;  // Stop auto after monthly equity DD
-input double InpMaxMonthlyLossPercent = 15.0;  // Max monthly loss % of month-start balance
+//--- ความเสี่ยงรายสัปดาห์/เดือน
+input group "=== ความเสี่ยงรายสัปดาห์/เดือน ==="
+input bool   InpUseWeeklyLossLimit    = true;  // หยุดออโต้เมื่อ DD สัปดาห์เกิน
+input double InpMaxWeeklyLossPercent  = 8.0;   // DD สัปดาห์สูงสุด % ของยอดต้นสัปดาห์
+input bool   InpUseMonthlyLossLimit   = true;  // หยุดออโต้เมื่อ DD เดือนเกิน
+input double InpMaxMonthlyLossPercent = 15.0;  // DD เดือนสูงสุด % ของยอดต้นเดือน
 
-//--- Order / BE
-input group "=== Order & Breakeven ==="
-input int    InpOrderRetries           = 2;    // Retries on requote/timeout (async, no Sleep)
-input int    InpOrderRetryMs           = 300;  // Delay between retries (ms)
-input bool   InpUseBreakeven           = true; // Move SL to breakeven
-input double InpBreakevenTriggerR      = 1.0;  // Trigger when profit >= R x initial SL distance
-input int    InpBreakevenBufferPoints  = 20;   // SL buffer beyond entry (points)
+//--- วินัยกำไร/ขาดทุน
+input group "=== วินัยกำไร/ขาดทุน (USD) ==="
+input bool   InpUseDisciplineAlert   = true;  // เปิดแจ้งเตือนวินัย
+input double InpDisciplineProfitUsd  = 10.0;  // เป้ากำไรต่อวันแล้วแจ้งเตือน (USD)
+input double InpDisciplineLossUsd    = 10.0;  // เพดานขาดทุนต่อวันแล้วแจ้งเตือน (USD)
+input bool   InpDisciplineStopAuto   = true;  // ถึงเกณฑ์แล้วหยุดเปิดออโต้ในวันนั้น
 
-//--- Session
-input group "=== Session ==="
-input bool InpUseSessionFilter  = true; // Trade only in session hours
-input int  InpSessionStartHour  = 12;   // Start hour (server time)
-input int  InpSessionEndHour    = 21;   // End hour (server time, inclusive)
+//--- ปิดกำไรตามเวลา
+input group "=== ปิดกำไรตามเวลา ==="
+input bool   InpUseTimeProfitClose  = true;  // เปิดปิดกำไรเมื่อถือนานเกินกำหนด
+input int    InpTimeProfitMinutes   = 60;    // นาทีสูงสุดที่ถือถ้ายังกำไรแต่ไม่ถึง TP
+input double InpTimeProfitMinUsd    = 0.50;  // กำไรลอยต่ำสุดถึงจะปิด (USD)
+input bool   InpTimeProfitAlert     = true;  // Alert เมื่อปิดด้วยกฎนี้
 
-//--- Cooldown
-input group "=== Signal Cooldown ==="
-input int InpSignalCooldownBars = 5; // Bars to wait after signal/entry before new auto
+//--- ออเดอร์ / BE
+input group "=== ออเดอร์และ Breakeven ==="
+input int    InpOrderRetries           = 2;    // ลองใหม่เมื่อ requote/timeout (ไม่ Sleep)
+input int    InpOrderRetryMs           = 300;  // หน่วงระหว่าง retry (มิลลิวินาที)
+input bool   InpUseBreakeven           = true; // เลื่อน SL ไปเบรกอีเวน
+input double InpBreakevenTriggerR      = 1.0;  // เริ่มเมื่อกำไร >= R เท่าระยะ SL แรก
+input int    InpBreakevenBufferPoints  = 20;   // บัฟเฟอร์ SL หลังจุดเข้า (points)
 
-//--- ATR / SL / TP
+//--- ช่วงเวลาเทรด
+input group "=== ช่วงเวลาเทรด ==="
+input bool InpUseSessionFilter  = true; // เทรดเฉพาะในช่วงชั่วโมงที่ตั้ง
+input int  InpSessionStartHour  = 12;   // ชั่วโมงเริ่ม (เวลาเซิร์ฟเวอร์)
+input int  InpSessionEndHour    = 21;   // ชั่วโมงจบ (รวมชั่วโมงนี้)
+
+//--- คูลดาวน์สัญญาณ
+input group "=== คูลดาวน์สัญญาณ ==="
+input int InpSignalCooldownBars = 5; // แท่งที่รอหลังสัญญาณ/เข้าไม้ ก่อนออโต้ใหม่
+
+//--- SL / TP
 input group "=== SL / TP ==="
-input double InpSlAtrMult        = 1.0; // ATR multiplier for SL floor
-input double InpRewardRatio      = 1.5; // TP = SL distance x this
-input double InpSwingSlBufferAtr = 0.1; // Extra buffer beyond swing for SL
-input int    InpAtrPeriod        = 14;  // ATR period
+input double InpSlAtrMult        = 1.0; // ตัวคูณ ATR สำหรับพื้น SL
+input double InpRewardRatio      = 1.5; // TP = ระยะ SL คูณค่านี้
+input double InpSwingSlBufferAtr = 0.1; // บัฟเฟอร์เกินสวิงสำหรับ SL
+input int    InpAtrPeriod        = 14;  // คาบ ATR
 
-//--- Swing
-input group "=== Swing High / Low ==="
-input bool InpShowSwingPoints = true;  // Draw swing box + pivots
-input bool InpUseSwingFilter  = true;  // Filter entries with swings
-input int  InpSwingStrength   = 3;     // Bars left/right for pivot
-input int  InpSwingLookback   = 60;    // Bars to scan
+//--- สวิง
+input group "=== สวิง High / Low ==="
+input bool InpShowSwingPoints = true;  // วาดกล่องสวิง + จุด pivot
+input bool InpUseSwingFilter  = true;  // กรองเข้าไม้ด้วยสวิง
+input int  InpSwingStrength   = 3;     // แท่งซ้าย/ขวาสำหรับ pivot
+input int  InpSwingLookback   = 60;    // จำนวนแท่งที่สแกน
 
-//--- News
-input group "=== News Guard ==="
-input bool InpUseNewsFilter         = true; // Block auto entries around news
-input int  InpNewsMinutesBefore     = 30;   // Minutes before news
-input int  InpNewsMinutesAfter      = 30;   // Minutes after news
-input bool InpNewsHighOnly          = true; // High impact only
-input bool InpNewsAlert             = true; // Alert when entering news window
-input bool InpCryptoMajorNewsOnly   = true; // Crypto: only major USD news (NFP/CPI/FOMC...)
+//--- ข่าว
+input group "=== กันข่าว ==="
+input bool InpUseNewsFilter         = true; // บล็อกออโต้ช่วงข่าว
+input int  InpNewsMinutesBefore     = 30;   // นาทีก่อนข่าว
+input int  InpNewsMinutesAfter      = 30;   // นาทีหลังข่าว
+input bool InpNewsHighOnly          = true; // เฉพาะข่าวผลกระทบสูง
+input bool InpNewsAlert             = true; // แจ้งเตือนเมื่อเข้าช่วงข่าว
+input bool InpCryptoMajorNewsOnly   = true; // คริปโต: เฉพาะข่าว USD สำคัญ (NFP/CPI/FOMC...)
 
-//--- Trend indicators
-input group "=== Trend Mode ==="
-input int InpEmaFastTrend = 50;
-input int InpEmaSlowTrend = 200;
-input int InpRsiPeriod    = 14;
-input int InpRsiBuyMax    = 70;
-input int InpRsiSellMin   = 30;
-input int InpMacdFast     = 12;
-input int InpMacdSlow     = 26;
-input int InpMacdSignal   = 9;
+//--- อินดิเทรนด์
+input group "=== โหมดเทรนด์ ==="
+input int InpEmaFastTrend = 50;  // EMA เร็ว
+input int InpEmaSlowTrend = 200; // EMA ช้า
+input int InpRsiPeriod    = 14;  // คาบ RSI
+input int InpRsiBuyMax    = 70;  // RSI สูงสุดสำหรับ Buy
+input int InpRsiSellMin   = 30;  // RSI ต่ำสุดสำหรับ Sell
+input int InpMacdFast     = 12;  // MACD เร็ว
+input int InpMacdSlow     = 26;  // MACD ช้า
+input int InpMacdSignal   = 9;   // MACD สัญญาณ
 
-//--- Scalp indicators
-input group "=== Scalp Mode ==="
-input int    InpEmaFastScalp = 9;
-input int    InpEmaSlowScalp = 21;
-input int    InpStochK       = 5;
-input int    InpStochD       = 3;
-input int    InpStochSlowing = 3;
-input double InpStochOversold   = 20.0;
-input double InpStochOverbought = 80.0;
+//--- อินดิสเกลป์
+input group "=== โหมดสเกลป์ ==="
+input int    InpEmaFastScalp = 9;     // EMA เร็ว
+input int    InpEmaSlowScalp = 21;    // EMA ช้า
+input int    InpStochK       = 5;     // Stochastic %K
+input int    InpStochD       = 3;     // Stochastic %D
+input int    InpStochSlowing = 3;     // Stochastic slowing
+input double InpStochOversold   = 20.0; // โซนขายมากเกินไป
+input double InpStochOverbought = 80.0; // โซนซื้อมากเกินไป
 
 CTrade         g_trade;
 int            g_atrHandle   = INVALID_HANDLE;
@@ -184,6 +198,12 @@ ulong    g_retryNextTick = 0;
 
 string   g_lastBlockReason = "";
 ulong    g_journalLastDeal = 0;
+
+bool     g_disciplineProfitAlerted = false;
+bool     g_disciplineLossAlerted   = false;
+long     g_disciplineDayKey        = 0;
+string   g_disciplineStatus        = "OFF";
+double   g_disciplineDayNet        = 0.0;
 
 //+------------------------------------------------------------------+
 string GvPrefix()
@@ -417,6 +437,90 @@ bool IsMonthlyLossStopped(double &monthEquityRisk)
 }
 
 //+------------------------------------------------------------------+
+double GetDisciplineDayNet()
+{
+   return GetDailyClosedPnL() + GetSymbolFloatingPnL();
+}
+
+//+------------------------------------------------------------------+
+void ResetDisciplineFlagsIfNewDay()
+{
+   EnsureDayState();
+   if(g_disciplineDayKey != g_dayKey)
+   {
+      g_disciplineDayKey = g_dayKey;
+      g_disciplineProfitAlerted = false;
+      g_disciplineLossAlerted = false;
+   }
+}
+
+//+------------------------------------------------------------------+
+// Returns true if auto entries should stop for discipline today
+bool CheckDisciplineLimits(string &status)
+{
+   status = "OFF";
+   g_disciplineStatus = "OFF";
+   g_disciplineDayNet = 0.0;
+   if(!InpUseDisciplineAlert)
+      return false;
+
+   ResetDisciplineFlagsIfNewDay();
+   double dayNet = GetDisciplineDayNet();
+   g_disciplineDayNet = dayNet;
+
+   double profitLimit = MathMax(0.0, InpDisciplineProfitUsd);
+   double lossLimit   = MathMax(0.0, InpDisciplineLossUsd);
+
+   bool profitHit = (profitLimit > 0.0 && dayNet >= profitLimit);
+   bool lossHit   = (lossLimit > 0.0 && dayNet <= -lossLimit);
+
+   if(profitHit && !g_disciplineProfitAlerted)
+   {
+      g_disciplineProfitAlerted = true;
+      Alert("AiTradingView วินัย: กำไรวันนี้ถึง +",
+            DoubleToString(dayNet, 2), " USD (เป้า ",
+            DoubleToString(profitLimit, 2), ") — พักมือ อย่าโลภ");
+      Print("Discipline profit hit: dayNet=", DoubleToString(dayNet, 2));
+   }
+   if(lossHit && !g_disciplineLossAlerted)
+   {
+      g_disciplineLossAlerted = true;
+      Alert("AiTradingView วินัย: ขาดทุนวันนี้ถึง ",
+            DoubleToString(dayNet, 2), " USD (เพดาน -",
+            DoubleToString(lossLimit, 2), ") — หยุดขาดทุนต่อ");
+      Print("Discipline loss hit: dayNet=", DoubleToString(dayNet, 2));
+   }
+
+   if(g_disciplineProfitAlerted)
+   {
+      status = "+HIT";
+      g_disciplineStatus = "+HIT";
+   }
+   else if(g_disciplineLossAlerted)
+   {
+      status = "-HIT";
+      g_disciplineStatus = "-HIT";
+   }
+   else
+   {
+      status = "OK";
+      g_disciplineStatus = "OK";
+   }
+
+   if(!InpDisciplineStopAuto)
+      return false;
+   return (g_disciplineProfitAlerted || g_disciplineLossAlerted);
+}
+
+//+------------------------------------------------------------------+
+bool IsDisciplineAutoBlocked()
+{
+   if(!InpUseDisciplineAlert || !InpDisciplineStopAuto)
+      return false;
+   return (g_disciplineProfitAlerted || g_disciplineLossAlerted);
+}
+
+//+------------------------------------------------------------------+
 bool IsInSession()
 {
    if(!InpUseSessionFilter)
@@ -570,6 +674,12 @@ void OnTick()
       if(TradePermissionOk(permWhy))
          ManageBreakeven();
    }
+   if(InpUseTimeProfitClose)
+   {
+      string permWhy = "";
+      if(TradePermissionOk(permWhy))
+         ManageTimeProfitClose();
+   }
 
    // Non-blocking order retries (recalc SL/TP from live prices)
    ProcessPendingRetry();
@@ -627,6 +737,9 @@ void OnTick()
    bool monthStop = IsMonthlyLossStopped(monthRisk);
    bool riskStop = (dailyStop || weekStop || monthStop);
 
+   string discStatus = "";
+   bool disciplineStop = CheckDisciplineLimits(discStatus);
+
    string permReason = "";
    bool tradePermOk = TradePermissionOk(permReason);
 
@@ -664,6 +777,8 @@ void OnTick()
       SetBlockReason("AutoTrade input OFF");
    else if(!tradePermOk)
       SetBlockReason(permReason);
+   else if(disciplineStop)
+      SetBlockReason(g_disciplineStatus == "+HIT" ? "discipline profit hit" : "discipline loss hit");
    else if(inNews)
       SetBlockReason(StringLen(newsTitle) > 0 ? ("news: " + newsTitle) : "news window");
    else if(!inSession)
@@ -708,7 +823,7 @@ void OnTick()
       g_lastSignal = SIGNAL_WAIT;
    }
 
-   if(!InpAutoTrade || !tradePermOk || inNews || !inSession || riskStop || !marketOpen)
+   if(!InpAutoTrade || !tradePermOk || disciplineStop || inNews || !inSession || riskStop || !marketOpen)
       return;
 
    if(g_cooldownBarsLeft > 0)
@@ -1380,11 +1495,11 @@ void EnsurePanelLabel(const string name, const int y)
 //+------------------------------------------------------------------+
 void RefreshAlgoBlockPanel()
 {
-   // Live lines (updated every tick) — indices 17/18 after main panel (0..16)
-   string algoName = g_panelPrefix + "L17";
-   string blockName = g_panelPrefix + "L18";
-   EnsurePanelLabel(algoName, 14 + 17 * 13);
-   EnsurePanelLabel(blockName, 14 + 18 * 13);
+   // Live lines (updated every tick) — after main panel 0..17
+   string algoName = g_panelPrefix + "L18";
+   string blockName = g_panelPrefix + "L19";
+   EnsurePanelLabel(algoName, 14 + 18 * 13);
+   EnsurePanelLabel(blockName, 14 + 19 * 13);
 
    string algo = AlgoStatusText();
    string block = "Block: " + (StringLen(g_lastBlockReason) > 0 ? g_lastBlockReason : "-");
@@ -1585,6 +1700,50 @@ void ManageBreakeven()
 }
 
 //+------------------------------------------------------------------+
+void ManageTimeProfitClose()
+{
+   if(!InpUseTimeProfitClose)
+      return;
+
+   int maxMinutes = MathMax(1, InpTimeProfitMinutes);
+   double minProfit = MathMax(0.0, InpTimeProfitMinUsd);
+   datetime now = TimeCurrent();
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
+
+      datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+      if(openTime <= 0) continue;
+      int ageSec = (int)(now - openTime);
+      if(ageSec < maxMinutes * 60)
+         continue;
+
+      double floating = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+      if(floating < minProfit)
+         continue;
+
+      double vol = PositionGetDouble(POSITION_VOLUME);
+      if(!g_trade.PositionClose(ticket))
+      {
+         Print("TimeProfit close failed #", ticket, " ", g_trade.ResultRetcodeDescription());
+         continue;
+      }
+
+      string msg = "TimeProfit close #" + IntegerToString((long)ticket) +
+                   " age=" + IntegerToString(ageSec / 60) + "m" +
+                   " pnl=" + DoubleToString(floating, 2) +
+                   " lot=" + DoubleToString(vol, 2);
+      Print(msg);
+      if(InpTimeProfitAlert)
+         Alert("AiTradingView ", msg);
+   }
+}
+
+//+------------------------------------------------------------------+
 double FitLotToMargin(double lot, const ENUM_ORDER_TYPE orderType)
 {
    double minLot  = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
@@ -1743,6 +1902,14 @@ bool RetryGuardsPass(string &reason)
       IsMonthlyLossStopped(monthRisk))
    {
       reason = "period risk stop";
+      return false;
+   }
+
+   // Refresh discipline without relying on last bar only
+   string discSt = "";
+   if(CheckDisciplineLimits(discSt) || IsDisciplineAutoBlocked())
+   {
+      reason = "discipline limit hit";
       return false;
    }
 
@@ -1910,8 +2077,8 @@ void UpdatePanelEx(const ENUM_SIGNAL signal, const string trendText,
 {
    string modeName = (InpTradeMode == MODE_TREND) ? "TREND" : "SCALP";
    string lines[];
-   ArrayResize(lines, 17);
-   lines[0]  = "AiTradingView EA v1.61";
+   ArrayResize(lines, 18);
+   lines[0]  = "AiTradingView EA v1.63";
    lines[1]  = "Mode: " + modeName + " | " + EnumToString(_Period);
    lines[2]  = "Trend: " + trendText;
    lines[3]  = "HTF: " + HtfToText(htfBias) + " (" + MtfName() + ")";
@@ -1934,7 +2101,12 @@ void UpdatePanelEx(const ENUM_SIGNAL signal, const string trendText,
    lines[15] = (sl > 0.0 && tp > 0.0)
                ? ("SL: " + DoubleToString(sl, _Digits) + "  TP: " + DoubleToString(tp, _Digits))
                : "SL/TP: - / -";
-   lines[16] = "BE: " + (InpUseBreakeven ? "ON" : "OFF") +
+   lines[16] = "วินัย: " + g_disciplineStatus +
+               " | net " + DoubleToString(g_disciplineDayNet, 2) + " USD";
+   lines[17] = "BE: " + (InpUseBreakeven ? "ON" : "OFF") +
+               " | TimeClose: " + (InpUseTimeProfitClose
+                                   ? (IntegerToString(MathMax(1, InpTimeProfitMinutes)) + "m")
+                                   : "OFF") +
                " | Journal: " + (InpJournalCsv ? "ON" : "OFF");
 
    int y = 14;
@@ -1952,6 +2124,12 @@ void UpdatePanelEx(const ENUM_SIGNAL signal, const string trendText,
       if(i == 7 && (!inSession || !marketOpen)) c = clrOrange;
       if(i == 8 && inNews) c = clrOrange;
       if(i == 10 && riskStop) c = clrTomato;
+      if(i == 16)
+      {
+         if(g_disciplineStatus == "+HIT") c = clrLime;
+         else if(g_disciplineStatus == "-HIT") c = clrTomato;
+         else if(g_disciplineStatus == "OK") c = clrSilver;
+      }
       ObjectSetInteger(0, name, OBJPROP_COLOR, c);
       ObjectSetString(0, name, OBJPROP_TEXT, lines[i]);
    }

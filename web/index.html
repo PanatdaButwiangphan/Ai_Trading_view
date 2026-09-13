@@ -7,7 +7,7 @@
   <style>
     :root {
       --bg: #0f1419;
-      --panel: #1a222c; 
+      --panel: #1a222c;
       --text: #e8eef4;
       --muted: #8b9aab;
       --line: #2a3542;
@@ -66,7 +66,7 @@
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 0.75rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
     }
     @media (max-width: 900px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -84,8 +84,132 @@
     .stat .label { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.25rem; }
     .stat .value { font-size: 1.25rem; font-variant-numeric: tabular-nums; font-weight: 600; }
     .stat .hint { color: var(--muted); font-size: 0.75rem; margin-top: 0.25rem; }
-    .win { color: var(--win); }
-    .loss { color: var(--loss); }
+    .win, .pnl-pos { color: var(--win); }
+    .loss, .pnl-neg { color: var(--loss); }
+
+    .cal-wrap {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1rem 1.15rem;
+      margin-bottom: 0.75rem;
+    }
+    .cal-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .cal-nav button {
+      background: #243140;
+      border: 1px solid var(--line);
+      color: var(--text);
+      width: 2rem;
+      height: 2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .cal-nav button:hover { border-color: var(--accent); }
+    .cal-title {
+      font-size: 1.1rem;
+      font-weight: 650;
+      min-width: 9rem;
+      text-align: center;
+    }
+    .cal-month-net {
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+      font-size: 1.05rem;
+    }
+    .cal-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 0.35rem;
+      margin-bottom: 0.35rem;
+    }
+    .cal-weekdays span {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.25rem 0;
+    }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 0.35rem;
+    }
+    .cal-cell {
+      min-height: 4.5rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.4rem 0.45rem;
+      background: #151c24;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .cal-cell.empty {
+      background: transparent;
+      border-color: transparent;
+    }
+    .cal-cell.has-data {
+      cursor: pointer;
+    }
+    .cal-cell.has-data:hover {
+      border-color: var(--accent);
+    }
+    .cal-cell.is-today {
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+    .cal-cell.is-selected {
+      border-color: var(--accent);
+      background: #1a2836;
+    }
+    .cal-daynum {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .cal-cell.has-data .cal-daynum { color: var(--text); }
+    .cal-pnl {
+      font-size: 0.85rem;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+    .cal-trades {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .day-filter {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: -0.35rem 0 0.65rem;
+      min-height: 1.25rem;
+    }
+    .day-filter button {
+      margin-left: 0.5rem;
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--accent);
+      border-radius: 6px;
+      padding: 0.15rem 0.5rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
     .table-wrap {
       overflow: auto;
       border: 1px solid var(--line);
@@ -116,7 +240,6 @@
       letter-spacing: 0.04em;
     }
     tr:last-child td { border-bottom: none; }
-    tr.today-row td { background: rgba(91, 159, 212, 0.08); }
     .empty {
       color: var(--muted);
       padding: 1.5rem;
@@ -128,6 +251,10 @@
       border-radius: 4px;
       font-size: 0.85em;
     }
+    @media (max-width: 640px) {
+      .cal-cell { min-height: 3.6rem; padding: 0.3rem; }
+      .cal-pnl { font-size: 0.72rem; }
+    }
   </style>
 </head>
 <body>
@@ -136,7 +263,7 @@
     <p class="sub">
       โหลดไฟล์ <code>AITV_journal.csv</code> จากโฟลเดอร์ Common Files ของ MT5
       (<code>Terminal → File → Open Data Folder → Common\Files</code>)
-      แล้วดูสรุปรวม + สรุปรายวันอัตโนมัติ + ตารางไม้ที่ปิดแล้ว
+      แล้วดูสรุปรวม + <strong>ปฏิทินกำไร/ขาดทุนรายวัน</strong> + ตารางไม้
     </p>
 
     <div class="drop" id="drop">
@@ -157,25 +284,24 @@
       <div class="stat"><div class="label">Avg PnL</div><div class="value" id="sAvg">0.00</div></div>
     </div>
 
-    <h2>Daily summary</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Trades</th>
-            <th>Wins</th>
-            <th>Win%</th>
-            <th>Net PnL</th>
-          </tr>
-        </thead>
-        <tbody id="dailyBody">
-          <tr><td colspan="5" class="empty">ยังไม่มีข้อมูล — อัปโหลด CSV</td></tr>
-        </tbody>
-      </table>
+    <h2>ปฏิทินกำไร / ขาดทุน</h2>
+    <div class="cal-wrap">
+      <div class="cal-head">
+        <div class="cal-nav">
+          <button type="button" id="calPrev" aria-label="เดือนก่อน">‹</button>
+          <div class="cal-title" id="calTitle">—</div>
+          <button type="button" id="calNext" aria-label="เดือนถัดไป">›</button>
+        </div>
+        <div class="cal-month-net" id="calMonthNet">เดือนนี้: —</div>
+      </div>
+      <div class="cal-weekdays">
+        <span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span><span>อา</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
     </div>
 
     <h2>Trades</h2>
+    <div class="day-filter" id="dayFilter"></div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -202,7 +328,21 @@
     const drop = document.getElementById("drop");
     const fileInput = document.getElementById("file");
     const tbody = document.getElementById("tbody");
-    const dailyBody = document.getElementById("dailyBody");
+    const calGrid = document.getElementById("calGrid");
+    const calTitle = document.getElementById("calTitle");
+    const calMonthNet = document.getElementById("calMonthNet");
+    const dayFilter = document.getElementById("dayFilter");
+
+    const MONTH_TH = [
+      "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+      "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    ];
+
+    let allRows = [];
+    let dayMap = new Map();
+    let viewYear = new Date().getFullYear();
+    let viewMonth = new Date().getMonth(); // 0-11
+    let selectedDayKey = "";
 
     function parseCsv(text) {
       const lines = text.replace(/^\uFEFF/, "").trim().split(/\r?\n/);
@@ -228,7 +368,6 @@
       return num(r.pnl) + num(r.swap) + num(r.commission);
     }
 
-    /** MT5 time e.g. "2026.09.13 14:22:01" or ISO-like → "2026.09.13" */
     function dayKey(timeStr) {
       const s = String(timeStr || "").trim();
       if (!s) return "";
@@ -245,7 +384,11 @@
       return y + "." + mo + "." + da;
     }
 
-    function groupByDay(rows) {
+    function makeDayKey(y, m0, day) {
+      return y + "." + String(m0 + 1).padStart(2, "0") + "." + String(day).padStart(2, "0");
+    }
+
+    function buildDayMap(rows) {
       const map = new Map();
       rows.forEach((r) => {
         const key = dayKey(r.time);
@@ -259,39 +402,24 @@
         g.net += pnl;
         if (pnl > 0) g.wins += 1;
       });
-      return Array.from(map.values()).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+      return map;
     }
 
-    function renderDaily(days, highlightDate) {
-      if (!days.length) {
-        dailyBody.innerHTML = '<tr><td colspan="5" class="empty">ไฟล์ว่างหรือไม่มีแถวข้อมูล</td></tr>';
-        return;
-      }
-      dailyBody.innerHTML = days
-        .map((d) => {
-          const winPct = d.trades ? ((d.wins / d.trades) * 100).toFixed(1) + "%" : "—";
-          const cls = d.net >= 0 ? "win" : "loss";
-          const rowCls = d.date === highlightDate ? "today-row" : "";
-          return `<tr class="${rowCls}">
-            <td>${d.date}</td>
-            <td>${d.trades}</td>
-            <td>${d.wins}</td>
-            <td>${winPct}</td>
-            <td class="${cls}">${d.net.toFixed(2)}</td>
-          </tr>`;
-        })
-        .join("");
+    function fmtSigned(n) {
+      const s = n.toFixed(2);
+      return n > 0 ? "+" + s : s;
     }
 
-    function renderToday(days) {
+    function renderTodayCard() {
       const todayEl = document.getElementById("sTodayPnl");
       const hintEl = document.getElementById("sTodayHint");
       const localToday = localTodayKey();
-      let day = days.find((d) => d.date === localToday);
+      let day = dayMap.get(localToday);
       let label = localToday;
       let isLocal = true;
-      if (!day && days.length) {
-        day = days[0];
+      if (!day && dayMap.size) {
+        const sorted = Array.from(dayMap.values()).sort((a, b) => (a.date < b.date ? 1 : -1));
+        day = sorted[0];
         label = day.date;
         isLocal = false;
       }
@@ -299,41 +427,117 @@
         todayEl.textContent = "—";
         todayEl.className = "value";
         hintEl.textContent = "ยังไม่มีข้อมูล";
-        return label;
+        return;
       }
-      todayEl.textContent = day.net.toFixed(2);
+      todayEl.textContent = fmtSigned(day.net);
       todayEl.className = "value " + (day.net >= 0 ? "win" : "loss");
       hintEl.textContent = isLocal
         ? label + " · " + day.trades + " trades"
         : "ล่าสุดในไฟล์ " + label + " · " + day.trades + " trades";
-      return label;
     }
 
-    function render(rows) {
-      const trades = rows.length;
-      let wins = 0;
-      let net = 0;
-      rows.forEach((r) => {
-        const pnl = rowPnl(r);
-        net += pnl;
-        if (pnl > 0) wins++;
+    function renderCalendar() {
+      calTitle.textContent = MONTH_TH[viewMonth] + " " + viewYear;
+
+      let monthNet = 0;
+      let monthTrades = 0;
+      dayMap.forEach((g, key) => {
+        const parts = key.split(".");
+        if (parts.length !== 3) return;
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        if (y === viewYear && m === viewMonth) {
+          monthNet += g.net;
+          monthTrades += g.trades;
+        }
       });
-      const winRate = trades ? ((wins / trades) * 100).toFixed(1) + "%" : "—";
-      const avg = trades ? net / trades : 0;
 
-      document.getElementById("sTrades").textContent = String(trades);
-      document.getElementById("sWin").textContent = winRate;
-      const pnlEl = document.getElementById("sPnl");
-      pnlEl.textContent = net.toFixed(2);
-      pnlEl.className = "value " + (net >= 0 ? "win" : "loss");
-      document.getElementById("sAvg").textContent = avg.toFixed(2);
+      if (monthTrades === 0) {
+        calMonthNet.textContent = "เดือนนี้: —";
+        calMonthNet.className = "cal-month-net";
+      } else {
+        const label = monthNet >= 0 ? "กำไรเดือน" : "ขาดทุนเดือน";
+        calMonthNet.textContent = label + ": " + fmtSigned(monthNet);
+        calMonthNet.className = "cal-month-net " + (monthNet >= 0 ? "pnl-pos" : "pnl-neg");
+      }
 
-      const days = groupByDay(rows);
-      const highlight = renderToday(days);
-      renderDaily(days, highlight);
+      const first = new Date(viewYear, viewMonth, 1);
+      // Monday-first: Mon=0 ... Sun=6
+      let startPad = first.getDay() - 1;
+      if (startPad < 0) startPad = 6;
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const todayKey = localTodayKey();
 
-      if (!trades) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty">ไฟล์ว่างหรือไม่มีแถวข้อมูล</td></tr>';
+      const cells = [];
+      for (let i = 0; i < startPad; i++) {
+        cells.push('<div class="cal-cell empty"></div>');
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = makeDayKey(viewYear, viewMonth, d);
+        const g = dayMap.get(key);
+        const classes = ["cal-cell"];
+        if (g) classes.push("has-data");
+        if (key === todayKey) classes.push("is-today");
+        if (key === selectedDayKey) classes.push("is-selected");
+
+        let pnlHtml = "";
+        let tradesHtml = "";
+        if (g) {
+          const cls = g.net >= 0 ? "pnl-pos" : "pnl-neg";
+          pnlHtml = '<div class="cal-pnl ' + cls + '">' + fmtSigned(g.net) + "</div>";
+          tradesHtml = '<div class="cal-trades">' + g.trades + " ไม้</div>";
+        }
+
+        cells.push(
+          '<div class="' + classes.join(" ") + '" data-day="' + key + '">' +
+            '<div class="cal-daynum">' + d + "</div>" +
+            pnlHtml +
+            tradesHtml +
+          "</div>"
+        );
+      }
+      calGrid.innerHTML = cells.join("");
+
+      calGrid.querySelectorAll(".cal-cell.has-data").forEach((el) => {
+        el.addEventListener("click", () => {
+          selectedDayKey = el.getAttribute("data-day") || "";
+          renderCalendar();
+          renderTrades();
+        });
+      });
+    }
+
+    function renderTrades() {
+      const rows = selectedDayKey
+        ? allRows.filter((r) => dayKey(r.time) === selectedDayKey)
+        : allRows;
+
+      if (selectedDayKey) {
+        const g = dayMap.get(selectedDayKey);
+        const net = g ? g.net : 0;
+        const cls = net >= 0 ? "pnl-pos" : "pnl-neg";
+        const word = net >= 0 ? "กำไร" : "ขาดทุน";
+        dayFilter.innerHTML =
+          "แสดงวันที่ <strong>" + selectedDayKey + "</strong> · " +
+          (g ? g.trades + " ไม้ · " : "") +
+          '<span class="' + cls + '">' + word + " " + fmtSigned(net) + "</span>" +
+          '<button type="button" id="clearDayFilter">แสดงทั้งหมด</button>';
+        const btn = document.getElementById("clearDayFilter");
+        if (btn) {
+          btn.addEventListener("click", () => {
+            selectedDayKey = "";
+            renderCalendar();
+            renderTrades();
+          });
+        }
+      } else {
+        dayFilter.textContent = "คลิกวันในปฏิทินเพื่อกรองรายไม้";
+      }
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty">' +
+          (allRows.length ? "ไม่มีไม้ในวันที่เลือก" : "ไฟล์ว่างหรือไม่มีแถวข้อมูล") +
+          "</td></tr>";
         return;
       }
 
@@ -358,6 +562,48 @@
         .join("");
     }
 
+    function render(rows) {
+      allRows = rows;
+      dayMap = buildDayMap(rows);
+      selectedDayKey = "";
+
+      const trades = rows.length;
+      let wins = 0;
+      let net = 0;
+      rows.forEach((r) => {
+        const pnl = rowPnl(r);
+        net += pnl;
+        if (pnl > 0) wins++;
+      });
+      const winRate = trades ? ((wins / trades) * 100).toFixed(1) + "%" : "—";
+      const avg = trades ? net / trades : 0;
+
+      document.getElementById("sTrades").textContent = String(trades);
+      document.getElementById("sWin").textContent = winRate;
+      const pnlEl = document.getElementById("sPnl");
+      pnlEl.textContent = fmtSigned(net);
+      pnlEl.className = "value " + (net >= 0 ? "win" : "loss");
+      document.getElementById("sAvg").textContent = avg.toFixed(2);
+
+      // Jump calendar to latest trade month if any
+      if (dayMap.size) {
+        const latest = Array.from(dayMap.keys()).sort().pop();
+        const p = latest.split(".");
+        if (p.length === 3) {
+          viewYear = parseInt(p[0], 10);
+          viewMonth = parseInt(p[1], 10) - 1;
+        }
+      } else {
+        const now = new Date();
+        viewYear = now.getFullYear();
+        viewMonth = now.getMonth();
+      }
+
+      renderTodayCard();
+      renderCalendar();
+      renderTrades();
+    }
+
     function loadFile(file) {
       if (!file) return;
       const reader = new FileReader();
@@ -366,11 +612,29 @@
           render(parseCsv(String(reader.result || "")));
         } catch (e) {
           tbody.innerHTML = `<tr><td colspan="9" class="empty">อ่านไฟล์ไม่สำเร็จ: ${e.message}</td></tr>`;
-          dailyBody.innerHTML = `<tr><td colspan="5" class="empty">อ่านไฟล์ไม่สำเร็จ</td></tr>`;
+          calGrid.innerHTML = "";
+          calMonthNet.textContent = "เดือนนี้: —";
         }
       };
       reader.readAsText(file);
     }
+
+    document.getElementById("calPrev").addEventListener("click", () => {
+      viewMonth -= 1;
+      if (viewMonth < 0) {
+        viewMonth = 11;
+        viewYear -= 1;
+      }
+      renderCalendar();
+    });
+    document.getElementById("calNext").addEventListener("click", () => {
+      viewMonth += 1;
+      if (viewMonth > 11) {
+        viewMonth = 0;
+        viewYear += 1;
+      }
+      renderCalendar();
+    });
 
     fileInput.addEventListener("change", () => loadFile(fileInput.files[0]));
     ["dragenter", "dragover"].forEach((ev) => {
@@ -389,6 +653,10 @@
       const f = e.dataTransfer.files && e.dataTransfer.files[0];
       loadFile(f);
     });
+
+    // Initial empty calendar for current month
+    renderCalendar();
+    dayFilter.textContent = "อัปโหลด CSV เพื่อดูกำไร/ขาดทุนบนปฏิทิน";
   </script>
 </body>
 </html>
