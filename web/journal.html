@@ -4,95 +4,210 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AiTradingView Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Itim&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0f1419;
-      --panel: #1a222c;
-      --text: #e8eef4;
-      --muted: #8b9aab;
-      --line: #2a3542;
-      --win: #3ecf8e;
-      --loss: #f07178;
-      --accent: #5b9fd4;
+      --blush: #f7e4e8;
+      --champagne: #f3e6d4;
+      --mint: #d8ebe4;
+      --pearl: rgba(255, 255, 255, 0.55);
+      --glass: rgba(255, 252, 248, 0.58);
+      --glass-edge: rgba(255, 255, 255, 0.75);
+      --ink: #3d3238;
+      --muted: #8a7a82;
+      --gold: #c4a574;
+      --gold-soft: #e8d5b5;
+      --win: #2f8f78;
+      --win-bg: rgba(184, 224, 210, 0.55);
+      --loss: #b85c6e;
+      --loss-bg: rgba(240, 196, 204, 0.55);
+      --line: rgba(196, 165, 116, 0.28);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "Segoe UI", "IBM Plex Sans Thai", sans-serif;
-      background: radial-gradient(1200px 600px at 10% -10%, #1c3348 0%, var(--bg) 55%);
-      color: var(--text);
+      font-family: "Itim", cursive;
+      color: var(--ink);
       min-height: 100vh;
+      background:
+        radial-gradient(900px 500px at 12% 8%, rgba(255, 220, 200, 0.7) 0%, transparent 55%),
+        radial-gradient(700px 420px at 88% 18%, rgba(200, 230, 220, 0.55) 0%, transparent 50%),
+        radial-gradient(600px 400px at 50% 100%, rgba(243, 230, 212, 0.8) 0%, transparent 45%),
+        linear-gradient(165deg, var(--blush) 0%, var(--champagne) 45%, var(--mint) 100%);
+      background-attachment: fixed;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.45) 0 1px, transparent 2px),
+        radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.35) 0 1px, transparent 2px),
+        radial-gradient(circle at 40% 70%, rgba(255, 255, 255, 0.3) 0 1px, transparent 2px),
+        radial-gradient(circle at 85% 65%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px);
+      background-size: 180px 180px, 220px 220px, 160px 160px, 200px 200px;
+      opacity: 0.7;
+      z-index: 0;
+    }
+    #butterflies {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .bf {
+      position: absolute;
+      width: var(--size, 88px);
+      height: auto;
+      opacity: 0.72;
+      filter: drop-shadow(0 6px 12px rgba(196, 165, 116, 0.22));
+      transform-origin: 50% 55%;
+      animation: bfFloat var(--dur, 9s) ease-in-out infinite;
+      animation-delay: var(--delay, 0s);
+    }
+    .bf svg { display: block; width: 100%; height: auto; }
+    .bf .wing { mix-blend-mode: soft-light; }
+    .bf .spark {
+      animation: bfSparkle 2.8s ease-in-out infinite;
+      transform-origin: center;
+    }
+    .bf-1 { top: 6%; left: 3%; --size: 110px; --dur: 10s; --delay: 0s; }
+    .bf-2 { top: 14%; right: 4%; --size: 96px; --dur: 11s; --delay: -2s; animation-name: bfFloatFlip; }
+    .bf-3 { top: 42%; left: 1.5%; --size: 72px; --dur: 8.5s; --delay: -4s; opacity: 0.55; }
+    .bf-4 { top: 58%; right: 2%; --size: 84px; --dur: 12s; --delay: -1.5s; animation-name: bfFloatFlip; opacity: 0.6; }
+    .bf-5 { bottom: 12%; left: 8%; --size: 64px; --dur: 9.5s; --delay: -3s; opacity: 0.5; }
+    .bf-6 { top: 28%; right: 12%; --size: 58px; --dur: 7.5s; --delay: -5s; opacity: 0.48; }
+    .bf-7 { bottom: 22%; right: 18%; --size: 76px; --dur: 10.5s; --delay: -2.5s; animation-name: bfFloatFlip; opacity: 0.52; }
+    @media (max-width: 720px) {
+      .bf-3, .bf-5, .bf-6 { display: none; }
+      .bf-1 { --size: 78px; }
+      .bf-2 { --size: 70px; }
     }
     main {
+      position: relative;
+      z-index: 1;
       max-width: 1100px;
       margin: 0 auto;
-      padding: 2rem 1.25rem 3rem;
+      padding: 2.25rem 1.25rem 3.5rem;
     }
-    h1 {
-      font-size: 1.6rem;
-      font-weight: 650;
-      letter-spacing: -0.02em;
+    .hero {
+      animation: fadeUp 0.7s ease both;
+      margin-bottom: 1.5rem;
+    }
+    .brand {
+      font-family: inherit;
+      font-size: clamp(2.15rem, 4.2vw, 2.95rem);
+      font-weight: 400;
+      letter-spacing: 0.01em;
       margin: 0 0 0.35rem;
+      color: var(--ink);
+      line-height: 1.15;
     }
-    h2 {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin: 1.5rem 0 0.65rem;
-      color: var(--text);
+    .brand span {
+      color: var(--gold);
     }
     .sub {
       color: var(--muted);
-      margin-bottom: 1.5rem;
-      line-height: 1.45;
-      max-width: 42rem;
+      margin: 0;
+      line-height: 1.55;
+      max-width: 36rem;
+      font-size: 1.02rem;
+    }
+    h2 {
+      font-family: inherit;
+      font-size: 1.55rem;
+      font-weight: 400;
+      margin: 1.75rem 0 0.75rem;
+      color: var(--ink);
+      animation: fadeUp 0.75s ease 0.08s both;
+    }
+    .glass {
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-edge);
+      border-radius: 18px;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset;
     }
     .drop {
-      border: 1.5px dashed #3d5166;
-      background: color-mix(in srgb, var(--panel) 90%, transparent);
-      border-radius: 12px;
-      padding: 1.5rem;
+      border: 1.5px dashed rgba(196, 165, 116, 0.55);
+      background: rgba(255, 252, 248, 0.45);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 18px;
+      padding: 1.6rem 1.4rem;
       text-align: center;
-      transition: border-color 0.15s, background 0.15s;
-      margin-bottom: 1.25rem;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+      margin-bottom: 1.15rem;
+      animation: fadeUp 0.7s ease 0.05s both;
     }
     .drop.drag {
-      border-color: var(--accent);
-      background: #1e2d3c;
+      border-color: var(--gold);
+      background: rgba(255, 248, 240, 0.72);
+      box-shadow: 0 0 0 4px rgba(232, 213, 181, 0.45);
     }
-    .drop p { margin: 0.35rem 0; color: var(--muted); }
-    .drop strong { color: var(--text); }
-    input[type="file"] { margin-top: 0.75rem; color: var(--muted); }
+    .drop p { margin: 0.35rem 0; color: var(--muted); font-size: 0.92rem; }
+    .drop strong { color: var(--ink); font-weight: 600; }
+    input[type="file"] {
+      margin-top: 0.85rem;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
     .stats {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 0.75rem;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.35rem;
+      animation: fadeUp 0.75s ease 0.1s both;
     }
     @media (max-width: 900px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     .stat {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 0.9rem 1rem;
+      background: var(--glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--glass-edge);
+      border-radius: 16px;
+      padding: 0.95rem 1rem;
     }
     .stat.today {
-      border-color: #3d6a8c;
-      background: #1a2836;
+      border-color: rgba(196, 165, 116, 0.55);
+      background: rgba(255, 248, 236, 0.7);
     }
-    .stat .label { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.25rem; }
-    .stat .value { font-size: 1.25rem; font-variant-numeric: tabular-nums; font-weight: 600; }
-    .stat .hint { color: var(--muted); font-size: 0.75rem; margin-top: 0.25rem; }
+    .stat .label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+    .stat .value {
+      font-family: inherit;
+      font-size: 1.65rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 400;
+      line-height: 1.15;
+    }
+    .stat .hint { color: var(--muted); font-size: 0.75rem; margin-top: 0.3rem; }
     .win, .pnl-pos { color: var(--win); }
     .loss, .pnl-neg { color: var(--loss); }
 
     .cal-wrap {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 1rem 1rem 1.15rem;
-      margin-bottom: 0.75rem;
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-edge);
+      border-radius: 20px;
+      padding: 1.15rem 1.1rem 1.25rem;
+      margin-bottom: 0.5rem;
+      animation: fadeUp 0.8s ease 0.12s both;
     }
     .cal-head {
       display: flex;
@@ -100,65 +215,70 @@
       align-items: center;
       justify-content: space-between;
       gap: 0.75rem;
-      margin-bottom: 0.85rem;
+      margin-bottom: 0.95rem;
     }
     .cal-nav {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.55rem;
     }
     .cal-nav button {
-      background: #243140;
+      background: rgba(255, 255, 255, 0.65);
       border: 1px solid var(--line);
-      color: var(--text);
-      width: 2rem;
-      height: 2rem;
-      border-radius: 8px;
+      color: var(--ink);
+      width: 2.1rem;
+      height: 2.1rem;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 1rem;
-      line-height: 1;
-    }
-    .cal-nav button:hover { border-color: var(--accent); }
-    .cal-title {
       font-size: 1.1rem;
-      font-weight: 650;
-      min-width: 9rem;
+      line-height: 1;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .cal-nav button:hover {
+      border-color: var(--gold);
+      background: rgba(255, 250, 242, 0.95);
+    }
+    .cal-title {
+      font-family: inherit;
+      font-size: 1.4rem;
+      font-weight: 400;
+      min-width: 10rem;
       text-align: center;
     }
     .cal-month-net {
       font-variant-numeric: tabular-nums;
       font-weight: 650;
-      font-size: 1.05rem;
+      font-size: 0.98rem;
     }
     .cal-weekdays {
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 0.35rem;
-      margin-bottom: 0.35rem;
+      gap: 0.4rem;
+      margin-bottom: 0.4rem;
     }
     .cal-weekdays span {
       text-align: center;
       color: var(--muted);
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
+      font-size: 0.7rem;
+      font-weight: 650;
       letter-spacing: 0.04em;
-      padding: 0.25rem 0;
+      padding: 0.2rem 0;
     }
     .cal-grid {
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 0.35rem;
+      gap: 0.4rem;
     }
     .cal-cell {
-      min-height: 4.5rem;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 0.4rem 0.45rem;
-      background: #151c24;
+      min-height: 4.6rem;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 12px;
+      padding: 0.45rem 0.5rem;
+      background: rgba(255, 255, 255, 0.28);
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
+      gap: 0.15rem;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
     }
     .cal-cell.empty {
       background: transparent;
@@ -166,105 +286,294 @@
     }
     .cal-cell.has-data {
       cursor: pointer;
+      background: rgba(255, 255, 255, 0.42);
     }
     .cal-cell.has-data:hover {
-      border-color: var(--accent);
+      transform: translateY(-2px);
+      border-color: var(--gold-soft);
+    }
+    .cal-cell.has-data.pnl-cell-pos {
+      background: var(--win-bg);
+    }
+    .cal-cell.has-data.pnl-cell-neg {
+      background: var(--loss-bg);
     }
     .cal-cell.is-today {
-      box-shadow: inset 0 0 0 1px var(--accent);
+      box-shadow: inset 0 0 0 1.5px var(--gold);
     }
     .cal-cell.is-selected {
-      border-color: var(--accent);
-      background: #1a2836;
+      border-color: var(--gold);
+      background: rgba(255, 248, 236, 0.85);
     }
     .cal-daynum {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--muted);
-      font-weight: 600;
-    }
-    .cal-cell.has-data .cal-daynum { color: var(--text); }
-    .cal-pnl {
-      font-size: 0.85rem;
       font-weight: 650;
+    }
+    .cal-cell.has-data .cal-daynum { color: var(--ink); }
+    .cal-pnl {
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 400;
       font-variant-numeric: tabular-nums;
-      line-height: 1.2;
+      line-height: 1.15;
     }
     .cal-trades {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       color: var(--muted);
+      font-weight: 500;
     }
     .day-filter {
       color: var(--muted);
       font-size: 0.9rem;
-      margin: -0.35rem 0 0.65rem;
-      min-height: 1.25rem;
+      margin: 0 0 0.7rem;
+      min-height: 1.35rem;
     }
     .day-filter button {
-      margin-left: 0.5rem;
-      background: transparent;
+      margin-left: 0.55rem;
+      background: rgba(255, 255, 255, 0.65);
       border: 1px solid var(--line);
-      color: var(--accent);
-      border-radius: 6px;
-      padding: 0.15rem 0.5rem;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 0.2rem 0.65rem;
       cursor: pointer;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
+      font-family: inherit;
+      font-weight: 550;
+      transition: border-color 0.2s ease;
     }
+    .day-filter button:hover { border-color: var(--gold); }
 
     .table-wrap {
       overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--panel);
+      border: 1px solid var(--glass-edge);
+      border-radius: 18px;
+      background: var(--glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       margin-bottom: 0.5rem;
+      animation: fadeUp 0.8s ease 0.15s both;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-variant-numeric: tabular-nums;
     }
     th, td {
-      padding: 0.55rem 0.7rem;
-      border-bottom: 1px solid var(--line);
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid rgba(196, 165, 116, 0.18);
       text-align: left;
       white-space: nowrap;
     }
     th {
       position: sticky;
       top: 0;
-      background: #212b36;
+      background: rgba(255, 248, 240, 0.92);
       color: var(--muted);
-      font-weight: 600;
-      font-size: 0.78rem;
+      font-weight: 650;
+      font-size: 0.7rem;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
     }
     tr:last-child td { border-bottom: none; }
     .empty {
       color: var(--muted);
-      padding: 1.5rem;
+      padding: 1.6rem;
       text-align: center;
     }
     code {
-      background: #243140;
-      padding: 0.1rem 0.35rem;
-      border-radius: 4px;
-      font-size: 0.85em;
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid rgba(196, 165, 116, 0.25);
+      padding: 0.1rem 0.4rem;
+      border-radius: 6px;
+      font-size: 0.82em;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes bfFloat {
+      0%, 100% { transform: translateY(0) rotate(-4deg); }
+      50% { transform: translateY(-14px) rotate(5deg); }
+    }
+    @keyframes bfFloatFlip {
+      0%, 100% { transform: scaleX(-1) translateY(0) rotate(-4deg); }
+      50% { transform: scaleX(-1) translateY(-14px) rotate(5deg); }
+    }
+    @keyframes bfSparkle {
+      0%, 100% { opacity: 0.35; }
+      50% { opacity: 0.95; }
     }
     @media (max-width: 640px) {
-      .cal-cell { min-height: 3.6rem; padding: 0.3rem; }
-      .cal-pnl { font-size: 0.72rem; }
+      .cal-cell { min-height: 3.7rem; padding: 0.32rem; }
+      .cal-pnl { font-size: 0.88rem; }
+      .brand { font-size: 2.05rem; }
     }
   </style>
 </head>
 <body>
+  <div id="butterflies" aria-hidden="true">
+    <div class="bf bf-1">
+      <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g1a" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffd6e8" stop-opacity="0.85"/>
+            <stop offset="45%" stop-color="#c9b6f2" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#b8e8ef" stop-opacity="0.7"/>
+          </linearGradient>
+          <linearGradient id="g1b" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffe6a8" stop-opacity="0.75"/>
+            <stop offset="50%" stop-color="#f7c4d8" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#bfe8d8" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+        <path class="wing" d="M58 52 C40 48 12 28 18 12 C28 2 48 18 58 40 Z" fill="url(#g1a)" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
+        <path class="wing" d="M62 52 C80 48 108 28 102 12 C92 2 72 18 62 40 Z" fill="url(#g1b)" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
+        <path class="wing" d="M58 54 C42 62 20 82 28 92 C40 98 52 78 58 62 Z" fill="url(#g1a)" opacity="0.85" stroke="rgba(255,255,255,0.5)" stroke-width="0.6"/>
+        <path class="wing" d="M62 54 C78 62 100 82 92 92 C80 98 68 78 62 62 Z" fill="url(#g1b)" opacity="0.85" stroke="rgba(255,255,255,0.5)" stroke-width="0.6"/>
+        <ellipse cx="60" cy="52" rx="3.2" ry="10" fill="rgba(90,70,80,0.35)"/>
+        <circle class="spark" cx="34" cy="28" r="1.6" fill="#fff"/>
+        <circle class="spark" cx="88" cy="24" r="1.4" fill="#fff"/>
+        <circle class="spark" cx="60" cy="18" r="1.1" fill="#fff" opacity="0.8"/>
+      </svg>
+    </div>
+    <div class="bf bf-2">
+      <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g2a" x1="0%" y1="20%" x2="90%" y2="100%">
+            <stop offset="0%" stop-color="#c8f0e0" stop-opacity="0.8"/>
+            <stop offset="55%" stop-color="#d4c4f5" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#ffd0e4" stop-opacity="0.75"/>
+          </linearGradient>
+          <linearGradient id="g2b" x1="100%" y1="0%" x2="10%" y2="90%">
+            <stop offset="0%" stop-color="#b8e0f8" stop-opacity="0.8"/>
+            <stop offset="50%" stop-color="#f5d4a8" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#e8c8f0" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+        <path class="wing" d="M58 52 C40 48 12 28 18 12 C28 2 48 18 58 40 Z" fill="url(#g2a)" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
+        <path class="wing" d="M62 52 C80 48 108 28 102 12 C92 2 72 18 62 40 Z" fill="url(#g2b)" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
+        <path class="wing" d="M58 54 C42 62 20 82 28 92 C40 98 52 78 58 62 Z" fill="url(#g2a)" opacity="0.85" stroke="rgba(255,255,255,0.5)" stroke-width="0.6"/>
+        <path class="wing" d="M62 54 C78 62 100 82 92 92 C80 98 68 78 62 62 Z" fill="url(#g2b)" opacity="0.85" stroke="rgba(255,255,255,0.5)" stroke-width="0.6"/>
+        <ellipse cx="60" cy="52" rx="3.2" ry="10" fill="rgba(90,70,80,0.35)"/>
+        <circle class="spark" cx="40" cy="22" r="1.5" fill="#fff"/>
+        <circle class="spark" cx="82" cy="30" r="1.3" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="bf bf-3">
+      <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g3a" x1="0%" y1="0%" x2="100%" y2="80%">
+            <stop offset="0%" stop-color="#ffe8b8" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#f0c0d8" stop-opacity="0.65"/>
+          </linearGradient>
+          <linearGradient id="g3b" x1="100%" y1="10%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#c8e8f8" stop-opacity="0.75"/>
+            <stop offset="100%" stop-color="#d8f0e0" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+        <path class="wing" d="M58 52 C40 48 12 28 18 12 C28 2 48 18 58 40 Z" fill="url(#g3a)" stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>
+        <path class="wing" d="M62 52 C80 48 108 28 102 12 C92 2 72 18 62 40 Z" fill="url(#g3b)" stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>
+        <path class="wing" d="M58 54 C42 62 20 82 28 92 C40 98 52 78 58 62 Z" fill="url(#g3a)" opacity="0.8" stroke="rgba(255,255,255,0.45)" stroke-width="0.6"/>
+        <path class="wing" d="M62 54 C78 62 100 82 92 92 C80 98 68 78 62 62 Z" fill="url(#g3b)" opacity="0.8" stroke="rgba(255,255,255,0.45)" stroke-width="0.6"/>
+        <ellipse cx="60" cy="52" rx="3" ry="9" fill="rgba(90,70,80,0.3)"/>
+        <circle class="spark" cx="36" cy="26" r="1.3" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="bf bf-4">
+      <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g4a" x1="10%" y1="0%" x2="90%" y2="100%">
+            <stop offset="0%" stop-color="#e0d0ff" stop-opacity="0.8"/>
+            <stop offset="55%" stop-color="#ffd8ec" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#c8f0ec" stop-opacity="0.7"/>
+          </linearGradient>
+          <linearGradient id="g4b" x1="90%" y1="0%" x2="10%" y2="100%">
+            <stop offset="0%" stop-color="#ffecc0" stop-opacity="0.75"/>
+            <stop offset="100%" stop-color="#c0d8f8" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+        <path class="wing" d="M58 52 C40 48 12 28 18 12 C28 2 48 18 58 40 Z" fill="url(#g4a)" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
+        <path class="wing" d="M62 52 C80 48 108 28 102 12 C92 2 72 18 62 40 Z" fill="url(#g4b)" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
+        <path class="wing" d="M58 54 C42 62 20 82 28 92 C40 98 52 78 58 62 Z" fill="url(#g4a)" opacity="0.85" stroke="rgba(255,255,255,0.5)" stroke-width="0.6"/>
+        <path class="wing" d="M62 54 C78 62 100 82 92 92 C80 98 68 78 62 62 Z" fill="url(#g4b)" opacity="0.85" stroke="rgba(255,255,255,0.5)" stroke-width="0.6"/>
+        <ellipse cx="60" cy="52" rx="3.2" ry="10" fill="rgba(90,70,80,0.32)"/>
+        <circle class="spark" cx="30" cy="30" r="1.5" fill="#fff"/>
+        <circle class="spark" cx="90" cy="22" r="1.2" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="bf bf-5">
+      <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g5a" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffd0e0" stop-opacity="0.75"/>
+            <stop offset="100%" stop-color="#d0e8ff" stop-opacity="0.65"/>
+          </linearGradient>
+          <linearGradient id="g5b" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#d8f5e8" stop-opacity="0.75"/>
+            <stop offset="100%" stop-color="#f5e0b8" stop-opacity="0.65"/>
+          </linearGradient>
+        </defs>
+        <path class="wing" d="M58 52 C40 48 12 28 18 12 C28 2 48 18 58 40 Z" fill="url(#g5a)" stroke="rgba(255,255,255,0.55)" stroke-width="0.7"/>
+        <path class="wing" d="M62 52 C80 48 108 28 102 12 C92 2 72 18 62 40 Z" fill="url(#g5b)" stroke="rgba(255,255,255,0.55)" stroke-width="0.7"/>
+        <path class="wing" d="M58 54 C42 62 20 82 28 92 C40 98 52 78 58 62 Z" fill="url(#g5a)" opacity="0.8" stroke="rgba(255,255,255,0.4)" stroke-width="0.5"/>
+        <path class="wing" d="M62 54 C78 62 100 82 92 92 C80 98 68 78 62 62 Z" fill="url(#g5b)" opacity="0.8" stroke="rgba(255,255,255,0.4)" stroke-width="0.5"/>
+        <ellipse cx="60" cy="52" rx="2.8" ry="8.5" fill="rgba(90,70,80,0.28)"/>
+        <circle class="spark" cx="38" cy="24" r="1.2" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="bf bf-6">
+      <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g6a" x1="0%" y1="30%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#c8e8f5" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#e8d0f5" stop-opacity="0.65"/>
+          </linearGradient>
+          <linearGradient id="g6b" x1="100%" y1="0%" x2="20%" y2="100%">
+            <stop offset="0%" stop-color="#ffe0c8" stop-opacity="0.75"/>
+            <stop offset="100%" stop-color="#c8f0d8" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+        <path class="wing" d="M58 52 C40 48 12 28 18 12 C28 2 48 18 58 40 Z" fill="url(#g6a)" stroke="rgba(255,255,255,0.55)" stroke-width="0.7"/>
+        <path class="wing" d="M62 52 C80 48 108 28 102 12 C92 2 72 18 62 40 Z" fill="url(#g6b)" stroke="rgba(255,255,255,0.55)" stroke-width="0.7"/>
+        <path class="wing" d="M58 54 C42 62 20 82 28 92 C40 98 52 78 58 62 Z" fill="url(#g6a)" opacity="0.8" stroke="rgba(255,255,255,0.4)" stroke-width="0.5"/>
+        <path class="wing" d="M62 54 C78 62 100 82 92 92 C80 98 68 78 62 62 Z" fill="url(#g6b)" opacity="0.8" stroke="rgba(255,255,255,0.4)" stroke-width="0.5"/>
+        <ellipse cx="60" cy="52" rx="2.8" ry="8.5" fill="rgba(90,70,80,0.28)"/>
+        <circle class="spark" cx="86" cy="26" r="1.1" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="bf bf-7">
+      <svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g7a" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f8d0e8" stop-opacity="0.8"/>
+            <stop offset="50%" stop-color="#d8d0f8" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#c8efe0" stop-opacity="0.7"/>
+          </linearGradient>
+          <linearGradient id="g7b" x1="100%" y1="10%" x2="0%" y2="90%">
+            <stop offset="0%" stop-color="#ffe8c0" stop-opacity="0.75"/>
+            <stop offset="100%" stop-color="#b8dcf5" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+        <path class="wing" d="M58 52 C40 48 12 28 18 12 C28 2 48 18 58 40 Z" fill="url(#g7a)" stroke="rgba(255,255,255,0.6)" stroke-width="0.7"/>
+        <path class="wing" d="M62 52 C80 48 108 28 102 12 C92 2 72 18 62 40 Z" fill="url(#g7b)" stroke="rgba(255,255,255,0.6)" stroke-width="0.7"/>
+        <path class="wing" d="M58 54 C42 62 20 82 28 92 C40 98 52 78 58 62 Z" fill="url(#g7a)" opacity="0.82" stroke="rgba(255,255,255,0.45)" stroke-width="0.5"/>
+        <path class="wing" d="M62 54 C78 62 100 82 92 92 C80 98 68 78 62 62 Z" fill="url(#g7b)" opacity="0.82" stroke="rgba(255,255,255,0.45)" stroke-width="0.5"/>
+        <ellipse cx="60" cy="52" rx="3" ry="9" fill="rgba(90,70,80,0.3)"/>
+        <circle class="spark" cx="42" cy="20" r="1.3" fill="#fff"/>
+        <circle class="spark" cx="78" cy="28" r="1.1" fill="#fff"/>
+      </svg>
+    </div>
+  </div>
   <main>
-    <h1>AiTradingView Journal</h1>
-    <p class="sub">
-      โหลดไฟล์ <code>AITV_journal.csv</code> จากโฟลเดอร์ Common Files ของ MT5
-      (<code>Terminal → File → Open Data Folder → Common\Files</code>)
-      แล้วดูสรุปรวม + <strong>ปฏิทินกำไร/ขาดทุนรายวัน</strong> + ตารางไม้
-    </p>
+    <header class="hero">
+      <h1 class="brand">AiTradingView <span>Journal</span></h1>
+      <p class="sub">
+        โหลดไฟล์ <code>AITV_journal.csv</code> จากโฟลเดอร์ Common Files ของ MT5
+        แล้วดูสรุปรวม + ปฏิทินกำไร/ขาดทุนรายวัน + ตารางไม้
+      </p>
+    </header>
 
     <div class="drop" id="drop">
       <p><strong>ลากไฟล์ CSV มาวางที่นี่</strong> หรือเลือกไฟล์</p>
@@ -278,7 +587,7 @@
         <div class="value" id="sTodayPnl">—</div>
         <div class="hint" id="sTodayHint">ยังไม่มีข้อมูล</div>
       </div>
-      <div class="stat"><div class="label">Trades (all)</div><div class="value" id="sTrades">0</div></div>
+      <div class="stat"><div class="label">Trades</div><div class="value" id="sTrades">0</div></div>
       <div class="stat"><div class="label">Win rate</div><div class="value" id="sWin">—</div></div>
       <div class="stat"><div class="label">Net PnL</div><div class="value" id="sPnl">0.00</div></div>
       <div class="stat"><div class="label">Avg PnL</div><div class="value" id="sAvg">0.00</div></div>
@@ -341,7 +650,7 @@
     let allRows = [];
     let dayMap = new Map();
     let viewYear = new Date().getFullYear();
-    let viewMonth = new Date().getMonth(); // 0-11
+    let viewMonth = new Date().getMonth();
     let selectedDayKey = "";
 
     function parseCsv(text) {
@@ -462,7 +771,6 @@
       }
 
       const first = new Date(viewYear, viewMonth, 1);
-      // Monday-first: Mon=0 ... Sun=6
       let startPad = first.getDay() - 1;
       if (startPad < 0) startPad = 6;
       const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -476,7 +784,10 @@
         const key = makeDayKey(viewYear, viewMonth, d);
         const g = dayMap.get(key);
         const classes = ["cal-cell"];
-        if (g) classes.push("has-data");
+        if (g) {
+          classes.push("has-data");
+          classes.push(g.net >= 0 ? "pnl-cell-pos" : "pnl-cell-neg");
+        }
         if (key === todayKey) classes.push("is-today");
         if (key === selectedDayKey) classes.push("is-selected");
 
@@ -585,7 +896,6 @@
       pnlEl.className = "value " + (net >= 0 ? "win" : "loss");
       document.getElementById("sAvg").textContent = avg.toFixed(2);
 
-      // Jump calendar to latest trade month if any
       if (dayMap.size) {
         const latest = Array.from(dayMap.keys()).sort().pop();
         const p = latest.split(".");
@@ -654,7 +964,6 @@
       loadFile(f);
     });
 
-    // Initial empty calendar for current month
     renderCalendar();
     dayFilter.textContent = "อัปโหลด CSV เพื่อดูกำไร/ขาดทุนบนปฏิทิน";
   </script>

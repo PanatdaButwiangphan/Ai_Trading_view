@@ -1,18 +1,19 @@
 //+------------------------------------------------------------------+
 //|                                              AiTradingView.mq5   |
-//|  v1.63: time-based profit close when hold exceeds limit          |
+//|  v1.73: panel background frame for readable status text          |
 //+------------------------------------------------------------------+
 #property copyright "AiTradingView"
 #property link      ""
-#property version   "1.63"
-#property description "ปิดกำไรตามเวลาเมื่อถือเกินและยังกำไร"
+#property version   "1.73"
+#property description "กรอบพื้นหลังแผงสถานะให้อ่านง่าย + Push fix"
 
 #include <Trade/Trade.mqh>
 
 enum ENUM_TRADE_MODE
 {
    MODE_TREND = 0, // เทรนด์ (H1/H4)
-   MODE_SCALP = 1  // สเกลป์ (M1/M5)
+   MODE_SCALP = 1, // สเกลป์ (M1/M5)
+   MODE_GATES = 2  // 3 ด่าน MA+RSI/KD+Vol/MACD (แนะนำ H1)
 };
 
 enum ENUM_SIGNAL
@@ -40,8 +41,9 @@ input group "=== ทั่วไป ==="
 input ENUM_TRADE_MODE InpTradeMode       = MODE_SCALP; // โหมดเทรด
 input bool            InpAutoTrade       = false;      // เปิดออเดอร์อัตโนมัติ
 input ulong           InpMagic           = 20260912;   // หมายเลข Magic
-input int             InpMaxSpreadPoints = 50;         // สเปรดสูงสุด (points)
-input bool            InpAlertOnSignal   = true;       // แจ้งเตือนเมื่อมีสัญญาณใหม่
+input int             InpMaxSpreadPoints = 0;          // สเปรดสูงสุด (points, 0=อัตโนมัติตามคู่)
+input bool            InpAlertOnSignal   = true;       // แจ้งเตือนบน PC เมื่อมีสัญญาณใหม่
+input bool            InpPushOnSignal    = true;       // Push ไปมือถือ (แอป MT5 + MetaQuotes ID)
 input bool            InpShowIndicators  = true;       // ติดอินดิเคเตอร์บนชาร์ต
 input bool            InpManageManualOrders = true;    // ใส่ SL/TP ให้ออเดอร์มือ
 input int             InpMaxAccountEaPositions = 2;    // ไม้สูงสุดของ EA ทั้งบัญชี (ทุกคู่)
@@ -83,6 +85,22 @@ input bool   InpUseTimeProfitClose  = true;  // เปิดปิดกำไ�
 input int    InpTimeProfitMinutes   = 60;    // นาทีสูงสุดที่ถือถ้ายังกำไรแต่ไม่ถึง TP
 input double InpTimeProfitMinUsd    = 0.50;  // กำไรลอยต่ำสุดถึงจะปิด (USD)
 input bool   InpTimeProfitAlert     = true;  // Alert เมื่อปิดด้วยกฎนี้
+
+//--- ปิดกำไรเมื่อดูแล้วไม่ถึง TP
+input group "=== ปิดกำไรเมื่อไม่ถึง TP ==="
+input bool   InpUseUnlikelyTpClose     = true;  // เปิดปิดเมื่อความคืบหน้าช้า + โมเมนตัมสวน
+input int    InpUnlikelyTpMinMinutes   = 20;    // นาทีขั้นต่ำที่ถือก่อนเช็ค
+input double InpUnlikelyTpMinUsd       = 0.30;  // กำไรลอยต่ำสุดถึงจะปิด (USD)
+input double InpUnlikelyTpMaxProgress  = 0.40;  // ปิดถ้าไปได้ไม่ถึงสัดส่วนนี้ของระยะเข้า→TP
+input bool   InpUnlikelyTpAlert        = true;  // Alert เมื่อปิดด้วยกฎนี้
+
+//--- ตัดไม้เมื่อทิศเปลี่ยน (ก่อนโดน SL)
+input group "=== ตัดไม้เมื่อทิศสวน (ก่อน SL) ==="
+input bool   InpUseAdverseCutClose     = true;  // เปิดตัดเมื่อโครงสร้างทิศสวนออเดอร์
+input int    InpAdverseCutMinMinutes   = 3;     // นาทีขั้นต่ำที่ถือก่อนเช็ค
+input double InpAdverseCutMaxUsd       = 0.20;  // ปิดได้ถ้ากำไรลอยต่ำกว่านี้ (USD; รวมขาดทุน)
+input double InpAdverseCutMinSlRemain  = 0.25;  // สัดส่วนระยะที่เหลือถึง SL ขั้นต่ำถึงจะตัด
+input bool   InpAdverseCutAlert        = true;  // Alert เมื่อปิดด้วยกฎนี้
 
 //--- ออเดอร์ / BE
 input group "=== ออเดอร์และ Breakeven ==="
@@ -145,11 +163,27 @@ input int    InpStochD       = 3;     // Stochastic %D
 input int    InpStochSlowing = 3;     // Stochastic slowing
 input double InpStochOversold   = 20.0; // โซนขายมากเกินไป
 input double InpStochOverbought = 80.0; // โซนซื้อมากเกินไป
+input bool   InpScalpLooseEntry = true; // ผ่อนจังหวะเข้า (ขยาย cross / pullback / momentum)
+
+//--- โหมด 3 ด่าน
+input group "=== โหมด 3 ด่าน (GATES) ==="
+input int    InpGatesMaFast      = 7;   // MA สั้น
+input int    InpGatesMaMid       = 25;  // MA กลาง
+input int    InpGatesMaSlow      = 99;  // MA ยาว
+input int    InpGatesRsiPeriod   = 14;  // คาบ RSI
+input int    InpGatesStochK      = 9;   // Stochastic %K
+input int    InpGatesStochD      = 3;   // Stochastic %D
+input int    InpGatesStochSlow   = 3;   // Stochastic slowing
+input int    InpGatesVolMaPeriod = 20;  // SMA ของ tick volume
+input int    InpGatesMacdFast    = 12;  // MACD เร็ว
+input int    InpGatesMacdSlow    = 26;  // MACD ช้า
+input int    InpGatesMacdSignal  = 9;   // MACD สัญญาณ
 
 CTrade         g_trade;
 int            g_atrHandle   = INVALID_HANDLE;
 int            g_emaFastH    = INVALID_HANDLE;
 int            g_emaSlowH    = INVALID_HANDLE;
+int            g_maMidH      = INVALID_HANDLE; // MA25 for GATES (also mid line)
 int            g_rsiHandle   = INVALID_HANDLE;
 int            g_macdHandle  = INVALID_HANDLE;
 int            g_stochHandle = INVALID_HANDLE;
@@ -197,6 +231,8 @@ int      g_retryAttempt  = 0;
 ulong    g_retryNextTick = 0;
 
 string   g_lastBlockReason = "";
+string   g_lastWhyNoEntry  = "";
+string   g_lastPushStatus  = "Push: -";
 ulong    g_journalLastDeal = 0;
 
 bool     g_disciplineProfitAlerted = false;
@@ -579,6 +615,16 @@ int OnInit()
 
    if(InpTradeMode == MODE_SCALP && _Period != PERIOD_M1 && _Period != PERIOD_M5)
       Print("Tip: Scalp mode works best on M1 (entry) with M5/M15 confirm. Current TF=", EnumToString(_Period));
+   if(InpTradeMode == MODE_GATES && (_Period == PERIOD_M1 || _Period == PERIOD_M5))
+      Print("Tip: GATES mode works best on H1 (or H4). Current TF=", EnumToString(_Period));
+
+   {
+      int eff = EffectiveMaxSpreadPoints();
+      if(InpMaxSpreadPoints > 0)
+         Print("MaxSpread manual=", InpMaxSpreadPoints, " for ", _Symbol);
+      else
+         Print("MaxSpread auto=", eff, " for ", _Symbol, " (manual=0)");
+   }
 
    g_atrHandle = iATR(_Symbol, PERIOD_CURRENT, InpAtrPeriod);
    if(g_atrHandle == INVALID_HANDLE)
@@ -600,6 +646,21 @@ int OnInit()
          return INIT_FAILED;
       }
    }
+   else if(InpTradeMode == MODE_GATES)
+   {
+      g_emaFastH    = iMA(_Symbol, PERIOD_CURRENT, InpGatesMaFast, 0, MODE_SMA, PRICE_CLOSE);
+      g_maMidH      = iMA(_Symbol, PERIOD_CURRENT, InpGatesMaMid, 0, MODE_SMA, PRICE_CLOSE);
+      g_emaSlowH    = iMA(_Symbol, PERIOD_CURRENT, InpGatesMaSlow, 0, MODE_SMA, PRICE_CLOSE);
+      g_rsiHandle   = iRSI(_Symbol, PERIOD_CURRENT, InpGatesRsiPeriod, PRICE_CLOSE);
+      g_stochHandle = iStochastic(_Symbol, PERIOD_CURRENT, InpGatesStochK, InpGatesStochD, InpGatesStochSlow, MODE_SMA, STO_LOWHIGH);
+      g_macdHandle  = iMACD(_Symbol, PERIOD_CURRENT, InpGatesMacdFast, InpGatesMacdSlow, InpGatesMacdSignal, PRICE_CLOSE);
+      if(g_emaFastH == INVALID_HANDLE || g_maMidH == INVALID_HANDLE || g_emaSlowH == INVALID_HANDLE ||
+         g_rsiHandle == INVALID_HANDLE || g_stochHandle == INVALID_HANDLE || g_macdHandle == INVALID_HANDLE)
+      {
+         Print("Failed to create GATES indicator handles");
+         return INIT_FAILED;
+      }
+   }
    else
    {
       g_emaFastH    = iMA(_Symbol, PERIOD_CURRENT, InpEmaFastScalp, 0, MODE_EMA, PRICE_CLOSE);
@@ -615,8 +676,18 @@ int OnInit()
    if(InpUseMtfFilter)
    {
       ENUM_TIMEFRAMES htf = MtfPeriod();
-      int fastPeriod = (InpTradeMode == MODE_TREND) ? InpEmaFastTrend : InpEmaFastScalp;
-      int slowPeriod = (InpTradeMode == MODE_TREND) ? InpEmaSlowTrend : InpEmaSlowScalp;
+      int fastPeriod = InpEmaFastScalp;
+      int slowPeriod = InpEmaSlowScalp;
+      if(InpTradeMode == MODE_TREND)
+      {
+         fastPeriod = InpEmaFastTrend;
+         slowPeriod = InpEmaSlowTrend;
+      }
+      else if(InpTradeMode == MODE_GATES)
+      {
+         fastPeriod = InpGatesMaFast;
+         slowPeriod = InpGatesMaMid;
+      }
       g_mtfEmaFastH = iMA(_Symbol, htf, fastPeriod, 0, MODE_EMA, PRICE_CLOSE);
       g_mtfEmaSlowH = iMA(_Symbol, htf, slowPeriod, 0, MODE_EMA, PRICE_CLOSE);
       if(g_mtfEmaFastH == INVALID_HANDLE || g_mtfEmaSlowH == INVALID_HANDLE)
@@ -645,6 +716,7 @@ void OnDeinit(const int reason)
    if(g_atrHandle   != INVALID_HANDLE) IndicatorRelease(g_atrHandle);
    if(g_emaFastH    != INVALID_HANDLE) IndicatorRelease(g_emaFastH);
    if(g_emaSlowH    != INVALID_HANDLE) IndicatorRelease(g_emaSlowH);
+   if(g_maMidH      != INVALID_HANDLE) IndicatorRelease(g_maMidH);
    if(g_rsiHandle   != INVALID_HANDLE) IndicatorRelease(g_rsiHandle);
    if(g_macdHandle  != INVALID_HANDLE) IndicatorRelease(g_macdHandle);
    if(g_stochHandle != INVALID_HANDLE) IndicatorRelease(g_stochHandle);
@@ -680,6 +752,18 @@ void OnTick()
       if(TradePermissionOk(permWhy))
          ManageTimeProfitClose();
    }
+   if(InpUseUnlikelyTpClose)
+   {
+      string permWhy2 = "";
+      if(TradePermissionOk(permWhy2))
+         ManageUnlikelyTpClose();
+   }
+   if(InpUseAdverseCutClose)
+   {
+      string permWhy3 = "";
+      if(TradePermissionOk(permWhy3))
+         ManageAdverseCutClose();
+   }
 
    // Non-blocking order retries (recalc SL/TP from live prices)
    ProcessPendingRetry();
@@ -704,23 +788,36 @@ void OnTick()
 
    ENUM_SIGNAL rawSignal = SIGNAL_WAIT;
    string trendText = "WAIT";
+   string signalWhy = "";
    if(InpTradeMode == MODE_TREND)
-      rawSignal = GetTrendSignal(trendText);
+      rawSignal = GetTrendSignal(trendText, signalWhy);
+   else if(InpTradeMode == MODE_GATES)
+      rawSignal = GetGatesSignal(trendText, signalWhy);
    else
-      rawSignal = GetScalpSignal(trendText);
+      rawSignal = GetScalpSignal(trendText, signalWhy);
 
    ENUM_SIGNAL signal = rawSignal;
+   string filterWhy = "";
    if(InpUseSwingFilter && signal != SIGNAL_WAIT)
    {
       if(!PassSwingFilter(signal, atr))
+      {
+         filterWhy = SignalToText(signal) + " blocked: swing filter";
          signal = SIGNAL_WAIT;
+      }
    }
    if(InpUseMtfFilter && signal != SIGNAL_WAIT)
    {
       if(signal == SIGNAL_BUY && htfBias != HTF_BULL)
+      {
+         filterWhy = "BUY blocked: HTF=" + HtfToText(htfBias) + " need BULL";
          signal = SIGNAL_WAIT;
+      }
       if(signal == SIGNAL_SELL && htfBias != HTF_BEAR)
+      {
+         filterWhy = "SELL blocked: HTF=" + HtfToText(htfBias) + " need BEAR";
          signal = SIGNAL_WAIT;
+      }
    }
 
    string newsTitle = "";
@@ -752,15 +849,25 @@ void OnTick()
          g_lastNewsTitle = newsTitle;
          g_lastNewsTime = newsTime;
       }
+      if(signal != SIGNAL_WAIT && filterWhy == "")
+         filterWhy = SignalToText(signal) + " blocked: news window";
       signal = SIGNAL_WAIT;
    }
    else
       g_newsAlerted = false;
 
    if(!inSession)
+   {
+      if(signal != SIGNAL_WAIT && filterWhy == "")
+         filterWhy = SignalToText(signal) + " blocked: outside session";
       signal = SIGNAL_WAIT;
+   }
    if(!marketOpen)
+   {
+      if(signal != SIGNAL_WAIT && filterWhy == "")
+         filterWhy = SignalToText(signal) + " blocked: market closed";
       signal = SIGNAL_WAIT;
+   }
 
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
@@ -774,46 +881,111 @@ void OnTick()
 
    // Pre-set block reason for panel before attempting auto entry
    if(!InpAutoTrade)
+   {
       SetBlockReason("AutoTrade input OFF");
+      g_lastWhyNoEntry = "AutoTrade OFF — signal only (no auto order)";
+   }
    else if(!tradePermOk)
+   {
       SetBlockReason(permReason);
+      g_lastWhyNoEntry = permReason;
+   }
    else if(disciplineStop)
+   {
       SetBlockReason(g_disciplineStatus == "+HIT" ? "discipline profit hit" : "discipline loss hit");
+      g_lastWhyNoEntry = "discipline stop (" + g_disciplineStatus + ")";
+   }
    else if(inNews)
+   {
       SetBlockReason(StringLen(newsTitle) > 0 ? ("news: " + newsTitle) : "news window");
+      g_lastWhyNoEntry = "news window active";
+   }
    else if(!inSession)
+   {
       SetBlockReason("outside session");
+      g_lastWhyNoEntry = "outside session hours";
+   }
    else if(!marketOpen)
+   {
       SetBlockReason("market closed");
+      g_lastWhyNoEntry = "market closed";
+   }
    else if(riskStop)
+   {
       SetBlockReason("period risk stop");
+      string rs = "period risk stop";
+      if(dailyStop) rs += " (daily)";
+      if(weekStop) rs += " (weekly)";
+      if(monthStop) rs += " (monthly)";
+      g_lastWhyNoEntry = rs;
+   }
    else if(g_cooldownBarsLeft > 0)
+   {
       SetBlockReason("cooldown " + IntegerToString(g_cooldownBarsLeft) + " bars");
+      g_lastWhyNoEntry = "cooldown " + IntegerToString(g_cooldownBarsLeft) + " bars left";
+   }
    else if(g_retryPending)
+   {
       SetBlockReason("retry pending");
+      g_lastWhyNoEntry = "order retry pending";
+   }
    else if(!SpreadOk())
-      SetBlockReason("spread too high");
+   {
+      SetBlockReason(SpreadTooHighReason());
+      g_lastWhyNoEntry = SpreadTooHighReason();
+   }
    else if(HasOpenPositionManaged())
+   {
       SetBlockReason("symbol already has EA position");
+      g_lastWhyNoEntry = "this symbol already has EA position";
+   }
    else if(!AccountExposureOk())
+   {
       SetBlockReason("account EA position limit");
+      g_lastWhyNoEntry = "AccPos limit " + IntegerToString(CountAccountEaPositions()) + "/" +
+                         IntegerToString(MathMax(1, InpMaxAccountEaPositions));
+   }
    else if(signal != SIGNAL_BUY && signal != SIGNAL_SELL)
+   {
       SetBlockReason("no actionable signal");
+      if(filterWhy != "")
+         g_lastWhyNoEntry = filterWhy;
+      else if(signalWhy != "")
+         g_lastWhyNoEntry = signalWhy;
+      else
+         g_lastWhyNoEntry = "no BUY/SELL setup yet";
+   }
    else
+   {
       SetBlockReason("ready");
+      g_lastWhyNoEntry = "ready to open " + SignalToText(signal);
+   }
 
    UpdatePanelEx(signal, trendText, htfBias, inNews, newsTitle, inSession, marketOpen,
                  closedPnL, equityRisk, weekRisk, monthRisk, riskStop,
                  atr, showSl, showTp, g_lastSwingHigh, g_lastSwingLow);
 
-   // Alert/arrow with debounce: only when actionable signal changes and not spamming same direction in cooldown
+   // Alert/arrow with debounce: only when actionable signal changes
    if(signal == SIGNAL_BUY || signal == SIGNAL_SELL)
    {
       if(signal != g_lastAlertSignal)
       {
          DrawSignalArrow(signal);
+         string sigMsg = "AiTradingView " + SignalToText(signal) + " " + _Symbol + " +" + MtfName();
          if(InpAlertOnSignal)
-            Alert("AiTradingView ", SignalToText(signal), " ", _Symbol, " +", MtfName());
+            Alert(sigMsg);
+         if(InpPushOnSignal)
+         {
+            if(SendNotification(sigMsg))
+               g_lastPushStatus = "Push: OK " + SignalToText(signal);
+            else
+            {
+               g_lastPushStatus = "Push: FAIL (ตั้ง MetaQuotes ID)";
+               Print("Push failed: enable Notifications in Tools→Options→Notifications + MetaQuotes ID");
+            }
+         }
+         else
+            g_lastPushStatus = "Push: OFF";
          g_lastAlertSignal = signal;
       }
       g_lastSignal = signal;
@@ -821,6 +993,7 @@ void OnTick()
    else
    {
       g_lastSignal = SIGNAL_WAIT;
+      g_lastAlertSignal = SIGNAL_WAIT; // allow next BUY/SELL to notify again
    }
 
    if(!InpAutoTrade || !tradePermOk || disciplineStop || inNews || !inSession || riskStop || !marketOpen)
@@ -834,7 +1007,7 @@ void OnTick()
 
    if(!SpreadOk())
    {
-      Print("Skip order: spread too high");
+      Print("Skip order: ", SpreadTooHighReason());
       return;
    }
    if(HasOpenPositionManaged())
@@ -888,9 +1061,116 @@ bool IsNewBar()
 }
 
 //+------------------------------------------------------------------+
+long CurrentSpreadPoints()
+{
+   return (long)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+}
+
+//+------------------------------------------------------------------+
+int PriceBudgetToPoints(const double priceBudget)
+{
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   if(point <= 0.0 || priceBudget <= 0.0)
+      return 50;
+   int pts = (int)MathCeil(priceBudget / point);
+   return MathMax(1, pts);
+}
+
+//+------------------------------------------------------------------+
+double ForexPipSize(const string baseCur, const string quoteCur)
+{
+   if(baseCur == "JPY" || quoteCur == "JPY")
+      return 0.01;
+   return 0.0001;
+}
+
+//+------------------------------------------------------------------+
+bool IsForexMajor(const string baseCur, const string quoteCur)
+{
+   bool baseUsd  = (baseCur == "USD");
+   bool quoteUsd = (quoteCur == "USD");
+   if(!baseUsd && !quoteUsd)
+      return false;
+
+   string other = baseUsd ? quoteCur : baseCur;
+   return (other == "EUR" || other == "GBP" || other == "AUD" ||
+           other == "NZD" || other == "CAD" || other == "CHF" ||
+           other == "JPY");
+}
+
+//+------------------------------------------------------------------+
+bool IsSilverSymbol()
+{
+   string sym = _Symbol;
+   StringToUpper(sym);
+   StringReplace(sym, "m", "");
+   StringReplace(sym, ".", "");
+   StringReplace(sym, "#", "");
+   return (StringFind(sym, "XAG") == 0 || StringFind(sym, "SILVER") >= 0);
+}
+
+//+------------------------------------------------------------------+
+int RecommendedMaxSpreadPoints()
+{
+   string baseCur, quoteCur;
+   GetSymbolCurrencies(baseCur, quoteCur);
+
+   double priceBudget = 0.0;
+
+   if(baseCur == "XAU")
+      priceBudget = 0.40;
+   else if(IsSilverSymbol() || baseCur == "XAG")
+      priceBudget = 0.05;
+   else if(baseCur == "BTC")
+      priceBudget = 25.0;
+   else if(baseCur == "ETH")
+      priceBudget = 2.0;
+   else if(IsForexMajor(baseCur, quoteCur))
+      priceBudget = 2.5 * ForexPipSize(baseCur, quoteCur);
+   else if(StringLen(baseCur) == 3 && StringLen(quoteCur) == 3)
+      priceBudget = 4.0 * ForexPipSize(baseCur, quoteCur);
+
+   int pts;
+   if(priceBudget > 0.0)
+      pts = PriceBudgetToPoints(priceBudget);
+   else
+      pts = 50; // fallback (legacy default)
+
+   if(InpTradeMode == MODE_SCALP)
+      pts = MathMax(1, (int)MathCeil(pts * 0.80));
+
+   return pts;
+}
+
+//+------------------------------------------------------------------+
+int EffectiveMaxSpreadPoints()
+{
+   if(InpMaxSpreadPoints > 0)
+      return InpMaxSpreadPoints;
+   return RecommendedMaxSpreadPoints();
+}
+
+//+------------------------------------------------------------------+
 bool SpreadOk()
 {
-   return ((long)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD) <= InpMaxSpreadPoints);
+   return (CurrentSpreadPoints() <= EffectiveMaxSpreadPoints());
+}
+
+//+------------------------------------------------------------------+
+string SpreadStatusText()
+{
+   long cur = CurrentSpreadPoints();
+   int maxSp = EffectiveMaxSpreadPoints();
+   string mode = (InpMaxSpreadPoints > 0) ? "" : " (auto)";
+   return "Spread: " + IntegerToString((int)cur) + " / max " + IntegerToString(maxSp) + mode;
+}
+
+//+------------------------------------------------------------------+
+string SpreadTooHighReason()
+{
+   long cur = CurrentSpreadPoints();
+   int maxSp = EffectiveMaxSpreadPoints();
+   return "spread too high (" + IntegerToString((int)cur) + " > " + IntegerToString(maxSp) + ")";
 }
 
 //+------------------------------------------------------------------+
@@ -954,9 +1234,17 @@ void AttachIndicators()
 {
    AddIndicatorToChart(g_emaFastH, 0);
    AddIndicatorToChart(g_emaSlowH, 0);
+   if(InpTradeMode == MODE_GATES && g_maMidH != INVALID_HANDLE)
+      AddIndicatorToChart(g_maMidH, 0);
    if(InpTradeMode == MODE_TREND)
    {
       AddIndicatorToChart(g_rsiHandle, -1);
+      AddIndicatorToChart(g_macdHandle, -1);
+   }
+   else if(InpTradeMode == MODE_GATES)
+   {
+      AddIndicatorToChart(g_rsiHandle, -1);
+      AddIndicatorToChart(g_stochHandle, -1);
       AddIndicatorToChart(g_macdHandle, -1);
    }
    else
@@ -1113,18 +1401,28 @@ void ScanAndDrawSwings()
 bool PassSwingFilter(const ENUM_SIGNAL signal, const double atr)
 {
    double close1 = iClose(_Symbol, PERIOD_CURRENT, 1);
-   double nearDist = atr * 0.3;
+   bool looseScalp = (InpScalpLooseEntry && InpTradeMode == MODE_SCALP);
+   double nearDist = atr * (looseScalp ? 1.0 : 0.3);
+   bool midOk = false;
+   if(looseScalp && g_hasSwingHigh && g_hasSwingLow && g_lastSwingHigh > g_lastSwingLow)
+   {
+      double mid = 0.5 * (g_lastSwingHigh + g_lastSwingLow);
+      if(signal == SIGNAL_BUY)
+         midOk = (close1 >= mid);
+      else if(signal == SIGNAL_SELL)
+         midOk = (close1 <= mid);
+   }
    if(signal == SIGNAL_BUY)
    {
       bool nearLow = g_hasSwingLow && (MathAbs(close1 - g_lastSwingLow) <= nearDist);
       bool breakHigh = g_hasSwingHigh && (close1 > g_lastSwingHigh);
-      return (nearLow || breakHigh);
+      return (nearLow || breakHigh || midOk);
    }
    if(signal == SIGNAL_SELL)
    {
       bool nearHigh = g_hasSwingHigh && (MathAbs(close1 - g_lastSwingHigh) <= nearDist);
       bool breakLow = g_hasSwingLow && (close1 < g_lastSwingLow);
-      return (nearHigh || breakLow);
+      return (nearHigh || breakLow || midOk);
    }
    return false;
 }
@@ -1139,6 +1437,10 @@ void GetSymbolCurrencies(string &baseCur, string &quoteCur)
    if(StringFind(sym, "XAU") == 0 || StringFind(sym, "GOLD") == 0)
    {
       baseCur = "XAU"; quoteCur = "USD"; return;
+   }
+   if(StringFind(sym, "XAG") == 0 || StringFind(sym, "SILVER") == 0)
+   {
+      baseCur = "XAG"; quoteCur = "USD"; return;
    }
    if(StringFind(sym, "BTC") == 0)
    {
@@ -1241,15 +1543,16 @@ bool IsNewsDangerWindow(string &newsTitle, datetime &newsTime)
 }
 
 //+------------------------------------------------------------------+
-ENUM_SIGNAL GetTrendSignal(string &trendText)
+ENUM_SIGNAL GetTrendSignal(string &trendText, string &whyWait)
 {
+   whyWait = "";
    double emaF1, emaS1, rsi1, rsi2, macdMain1, macdSig1, macdMain2, macdSig2;
    double close1 = iClose(_Symbol, PERIOD_CURRENT, 1);
-   if(!GetBufferValue(g_emaFastH, 0, 1, emaF1)) return SIGNAL_WAIT;
-   if(!GetBufferValue(g_emaSlowH, 0, 1, emaS1)) return SIGNAL_WAIT;
-   if(!GetBufferValue(g_rsiHandle, 0, 1, rsi1) || !GetBufferValue(g_rsiHandle, 0, 2, rsi2)) return SIGNAL_WAIT;
-   if(!GetBufferValue(g_macdHandle, 0, 1, macdMain1) || !GetBufferValue(g_macdHandle, 1, 1, macdSig1)) return SIGNAL_WAIT;
-   if(!GetBufferValue(g_macdHandle, 0, 2, macdMain2) || !GetBufferValue(g_macdHandle, 1, 2, macdSig2)) return SIGNAL_WAIT;
+   if(!GetBufferValue(g_emaFastH, 0, 1, emaF1)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_emaSlowH, 0, 1, emaS1)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_rsiHandle, 0, 1, rsi1) || !GetBufferValue(g_rsiHandle, 0, 2, rsi2)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_macdHandle, 0, 1, macdMain1) || !GetBufferValue(g_macdHandle, 1, 1, macdSig1)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_macdHandle, 0, 2, macdMain2) || !GetBufferValue(g_macdHandle, 1, 2, macdSig2)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
 
    bool bullTrend = (close1 > emaF1 && close1 > emaS1 && emaF1 > emaS1);
    bool bearTrend = (close1 < emaF1 && close1 < emaS1 && emaF1 < emaS1);
@@ -1258,31 +1561,188 @@ ENUM_SIGNAL GetTrendSignal(string &trendText)
    bool macdBear = (macdMain1 < macdSig1) && (macdMain2 >= macdSig2 || macdMain1 < macdMain2);
    bool rsiBuyOk  = (rsi1 < InpRsiBuyMax) && (rsi1 > 40.0) && (rsi1 >= rsi2);
    bool rsiSellOk = (rsi1 > InpRsiSellMin) && (rsi1 < 60.0) && (rsi1 <= rsi2);
-   if(bullTrend && rsiBuyOk && macdBull) return SIGNAL_BUY;
-   if(bearTrend && rsiSellOk && macdBear) return SIGNAL_SELL;
+   if(bullTrend && rsiBuyOk && macdBull) { whyWait = ""; return SIGNAL_BUY; }
+   if(bearTrend && rsiSellOk && macdBear) { whyWait = ""; return SIGNAL_SELL; }
+
+   if(!bullTrend && !bearTrend)
+      whyWait = "Trend SIDE — need clear BULL/BEAR";
+   else if(bullTrend)
+      whyWait = "BULL but RSI/MACD not ready (RSI=" + DoubleToString(rsi1, 1) + ")";
+   else
+      whyWait = "BEAR but RSI/MACD not ready (RSI=" + DoubleToString(rsi1, 1) + ")";
    return SIGNAL_WAIT;
 }
 
 //+------------------------------------------------------------------+
-ENUM_SIGNAL GetScalpSignal(string &trendText)
+ENUM_SIGNAL GetScalpSignal(string &trendText, string &whyWait)
 {
+   whyWait = "";
    double emaF1, emaF2, emaS1, emaS2, k1, d1, k2, d2;
    double close1 = iClose(_Symbol, PERIOD_CURRENT, 1);
-   if(!GetBufferValue(g_emaFastH, 0, 1, emaF1) || !GetBufferValue(g_emaFastH, 0, 2, emaF2)) return SIGNAL_WAIT;
-   if(!GetBufferValue(g_emaSlowH, 0, 1, emaS1) || !GetBufferValue(g_emaSlowH, 0, 2, emaS2)) return SIGNAL_WAIT;
-   if(!GetBufferValue(g_stochHandle, 0, 1, k1) || !GetBufferValue(g_stochHandle, 1, 1, d1)) return SIGNAL_WAIT;
-   if(!GetBufferValue(g_stochHandle, 0, 2, k2) || !GetBufferValue(g_stochHandle, 1, 2, d2)) return SIGNAL_WAIT;
+   if(!GetBufferValue(g_emaFastH, 0, 1, emaF1) || !GetBufferValue(g_emaFastH, 0, 2, emaF2)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_emaSlowH, 0, 1, emaS1) || !GetBufferValue(g_emaSlowH, 0, 2, emaS2)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_stochHandle, 0, 1, k1) || !GetBufferValue(g_stochHandle, 1, 1, d1)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_stochHandle, 0, 2, k2) || !GetBufferValue(g_stochHandle, 1, 2, d2)) { whyWait = "indicator not ready"; return SIGNAL_WAIT; }
 
    bool bull = (emaF1 > emaS1 && close1 > emaF1);
    bool bear = (emaF1 < emaS1 && close1 < emaF1);
    trendText = bull ? "BULL" : (bear ? "BEAR" : "SIDE");
    bool emaCrossUp   = (emaF2 <= emaS2 && emaF1 > emaS1);
    bool emaCrossDown = (emaF2 >= emaS2 && emaF1 < emaS1);
-   bool stochBuy  = (k2 <= d2 && k1 > d1) && (k1 < InpStochOverbought) && (k2 <= InpStochOversold + 15.0);
-   bool stochSell = (k2 >= d2 && k1 < d1) && (k1 > InpStochOversold) && (k2 >= InpStochOverbought - 15.0);
-   if(bull && (emaCrossUp || stochBuy) && k1 < InpStochOverbought) return SIGNAL_BUY;
-   if(bear && (emaCrossDown || stochSell) && k1 > InpStochOversold) return SIGNAL_SELL;
+
+   bool stochBuy;
+   bool stochSell;
+   if(InpScalpLooseEntry)
+   {
+      stochBuy  = (k2 <= d2 && k1 > d1) && (k1 < InpStochOverbought) && (k2 <= 50.0);
+      stochSell = (k2 >= d2 && k1 < d1) && (k1 > 0.0) && (k2 >= 50.0);
+      bool pullbackBuy  = (k1 <= InpStochOversold);
+      bool pullbackSell = (k1 >= InpStochOverbought);
+      bool momBuy  = (k1 > d1) && (k1 >= InpStochOverbought - 10.0);
+      bool momSell = (k1 < d1) && (k1 <= InpStochOversold + 10.0);
+      if(bull && (emaCrossUp || stochBuy || pullbackBuy || momBuy) && k1 < InpStochOverbought)
+      { whyWait = ""; return SIGNAL_BUY; }
+      if(bear && (emaCrossDown || stochSell || pullbackSell || momSell))
+      { whyWait = ""; return SIGNAL_SELL; }
+
+      string stochTxt = "Stoch K=" + DoubleToString(k1, 1) + " D=" + DoubleToString(d1, 1);
+      if(!bull && !bear)
+         whyWait = "Trend SIDE — need BULL/BEAR | " + stochTxt;
+      else if(bull)
+         whyWait = "BULL but no entry trigger yet | " + stochTxt +
+                   " (need pullback<=OS / mom / cross)";
+      else
+         whyWait = "BEAR but no entry trigger yet | " + stochTxt +
+                   " (need pullback>=OB / mom / cross)";
+   }
+   else
+   {
+      stochBuy  = (k2 <= d2 && k1 > d1) && (k1 < InpStochOverbought) && (k2 <= InpStochOversold + 15.0);
+      stochSell = (k2 >= d2 && k1 < d1) && (k1 > InpStochOversold) && (k2 >= InpStochOverbought - 15.0);
+      if(bull && (emaCrossUp || stochBuy) && k1 < InpStochOverbought) { whyWait = ""; return SIGNAL_BUY; }
+      if(bear && (emaCrossDown || stochSell) && k1 > InpStochOversold) { whyWait = ""; return SIGNAL_SELL; }
+
+      string stochTxt = "Stoch K=" + DoubleToString(k1, 1) + " D=" + DoubleToString(d1, 1);
+      if(!bull && !bear)
+         whyWait = "Trend SIDE — need BULL/BEAR | " + stochTxt;
+      else if(bull)
+         whyWait = "BULL but waiting EMA/Stoch cross | " + stochTxt;
+      else
+         whyWait = "BEAR but waiting EMA/Stoch cross | " + stochTxt;
+   }
    return SIGNAL_WAIT;
+}
+
+//+------------------------------------------------------------------+
+bool TickVolumeSma(const int period, const int shift, double &smaOut)
+{
+   int need = MathMax(1, period) + shift;
+   long vols[];
+   ArraySetAsSeries(vols, true);
+   int copied = CopyTickVolume(_Symbol, PERIOD_CURRENT, 0, need, vols);
+   if(copied < need)
+      return false;
+   double sum = 0.0;
+   for(int i = shift; i < shift + period; i++)
+      sum += (double)vols[i];
+   smaOut = sum / (double)period;
+   return true;
+}
+
+//+------------------------------------------------------------------+
+ENUM_SIGNAL GetGatesSignal(string &trendText, string &whyWait)
+{
+   whyWait = "";
+   double ma7_1, ma7_2, ma25_1, ma25_2, ma99_1, ma99_2;
+   double rsi1, rsi2, k1, d1, k2, d2;
+   double macdMain1, macdSig1, macdMain2, macdSig2;
+   double close1 = iClose(_Symbol, PERIOD_CURRENT, 1);
+
+   if(!GetBufferValue(g_emaFastH, 0, 1, ma7_1) || !GetBufferValue(g_emaFastH, 0, 2, ma7_2))
+   { whyWait = "Gate indicators not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_maMidH, 0, 1, ma25_1) || !GetBufferValue(g_maMidH, 0, 2, ma25_2))
+   { whyWait = "Gate indicators not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_emaSlowH, 0, 1, ma99_1) || !GetBufferValue(g_emaSlowH, 0, 2, ma99_2))
+   { whyWait = "Gate indicators not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_rsiHandle, 0, 1, rsi1) || !GetBufferValue(g_rsiHandle, 0, 2, rsi2))
+   { whyWait = "Gate indicators not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_stochHandle, 0, 1, k1) || !GetBufferValue(g_stochHandle, 1, 1, d1))
+   { whyWait = "Gate indicators not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_stochHandle, 0, 2, k2) || !GetBufferValue(g_stochHandle, 1, 2, d2))
+   { whyWait = "Gate indicators not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_macdHandle, 0, 1, macdMain1) || !GetBufferValue(g_macdHandle, 1, 1, macdSig1))
+   { whyWait = "Gate indicators not ready"; return SIGNAL_WAIT; }
+   if(!GetBufferValue(g_macdHandle, 0, 2, macdMain2) || !GetBufferValue(g_macdHandle, 1, 2, macdSig2))
+   { whyWait = "Gate indicators not ready"; return SIGNAL_WAIT; }
+
+   double volSma = 0.0;
+   if(!TickVolumeSma(MathMax(1, InpGatesVolMaPeriod), 1, volSma))
+   { whyWait = "Gate1/3 volume not ready"; return SIGNAL_WAIT; }
+   long vol1 = iVolume(_Symbol, PERIOD_CURRENT, 1);
+
+   bool maUp   = (ma7_1 > ma7_2 && ma25_1 > ma25_2 && ma99_1 > ma99_2);
+   bool maDown = (ma7_1 < ma7_2 && ma25_1 < ma25_2 && ma99_1 < ma99_2);
+   bool stackBull = (close1 > ma7_1 && ma7_1 > ma25_1 && ma25_1 > ma99_1 && maUp);
+   bool stackBear = (close1 < ma7_1 && ma7_1 < ma25_1 && ma25_1 < ma99_1 && maDown);
+   trendText = stackBull ? "BULL" : (stackBear ? "BEAR" : "SIDE");
+
+   // Gate 1
+   if(!stackBull && !stackBear)
+   {
+      whyWait = "Gate1 MA fail — need price>MA7>MA25>MA99 up (or reverse down)";
+      return SIGNAL_WAIT;
+   }
+
+   bool rsiBuy  = (rsi1 > 50.0 && rsi1 > rsi2);
+   bool rsiSell = (rsi1 < 50.0 && rsi1 < rsi2);
+   bool kdGcBuy  = (k1 > 50.0 && k2 <= d2 && k1 > d1);
+   bool kdDcSell = (k1 < 50.0 && k2 >= d2 && k1 < d1);
+
+   if(stackBull)
+   {
+      if(!rsiBuy || !kdGcBuy)
+      {
+         whyWait = "Gate2 fail — need RSI>50 rising + KD>50 golden cross" +
+                   " (RSI=" + DoubleToString(rsi1, 1) +
+                   " K=" + DoubleToString(k1, 1) + ")";
+         return SIGNAL_WAIT;
+      }
+      double hist1 = macdMain1 - macdSig1;
+      double hist2 = macdMain2 - macdSig2;
+      bool volOk = ((double)vol1 > volSma);
+      bool macdOk = (macdMain1 > 0.0 && hist1 > hist2);
+      if(!volOk || !macdOk)
+      {
+         whyWait = "Gate3 fail — need Vol>MA" + IntegerToString(InpGatesVolMaPeriod) +
+                   " + MACD>0 hist rising";
+         return SIGNAL_WAIT;
+      }
+      whyWait = "";
+      return SIGNAL_BUY;
+   }
+
+   // stackBear
+   if(!rsiSell || !kdDcSell)
+   {
+      whyWait = "Gate2 fail — need RSI<50 falling + KD<50 death cross" +
+                " (RSI=" + DoubleToString(rsi1, 1) +
+                " K=" + DoubleToString(k1, 1) + ")";
+      return SIGNAL_WAIT;
+   }
+   {
+      double hist1 = macdMain1 - macdSig1;
+      double hist2 = macdMain2 - macdSig2;
+      bool volOk = ((double)vol1 > volSma);
+      bool macdOk = (macdMain1 < 0.0 && hist1 < hist2);
+      if(!volOk || !macdOk)
+      {
+         whyWait = "Gate3 fail — need Vol>MA" + IntegerToString(InpGatesVolMaPeriod) +
+                   " + MACD<0 hist falling";
+         return SIGNAL_WAIT;
+      }
+   }
+   whyWait = "";
+   return SIGNAL_SELL;
 }
 
 //+------------------------------------------------------------------+
@@ -1484,25 +1944,84 @@ void EnsurePanelLabel(const string name, const int y)
    {
       ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
       ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-      ObjectSetInteger(0, name, OBJPROP_XDISTANCE, 10);
+      ObjectSetInteger(0, name, OBJPROP_XDISTANCE, 14);
       ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
       ObjectSetString(0, name, OBJPROP_FONT, "Consolas");
       ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 9);
+      ObjectSetInteger(0, name, OBJPROP_BACK, false);
+      ObjectSetInteger(0, name, OBJPROP_ZORDER, 10);
    }
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
 }
 
 //+------------------------------------------------------------------+
+void EnsurePanelFrame()
+{
+   // Main panel lines 0..17 + live 18..22 = 23 rows
+   const int lineCount = 23;
+   const int y0 = 8;
+   const int rowH = 13;
+   const int padX = 6;
+   const int padY = 6;
+   const int width = 420;
+   const int height = padY * 2 + lineCount * rowH + 4;
+
+   string name = g_panelPrefix + "BG";
+   if(ObjectFind(0, name) < 0)
+   {
+      ObjectCreate(0, name, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, name, OBJPROP_BACK, false);
+      ObjectSetInteger(0, name, OBJPROP_ZORDER, 0);
+      ObjectSetInteger(0, name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   }
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, padX);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y0);
+   ObjectSetInteger(0, name, OBJPROP_XSIZE, width);
+   ObjectSetInteger(0, name, OBJPROP_YSIZE, height);
+   ObjectSetInteger(0, name, OBJPROP_BGCOLOR, C'18,22,28');
+   ObjectSetInteger(0, name, OBJPROP_COLOR, C'90,120,150');
+   ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+}
+
+//+------------------------------------------------------------------+
 void RefreshAlgoBlockPanel()
 {
+   EnsurePanelFrame();
    // Live lines (updated every tick) — after main panel 0..17
    string algoName = g_panelPrefix + "L18";
    string blockName = g_panelPrefix + "L19";
+   string spreadName = g_panelPrefix + "L20";
+   string whyName = g_panelPrefix + "L21";
+   string pushName = g_panelPrefix + "L22";
    EnsurePanelLabel(algoName, 14 + 18 * 13);
    EnsurePanelLabel(blockName, 14 + 19 * 13);
+   EnsurePanelLabel(spreadName, 14 + 20 * 13);
+   EnsurePanelLabel(whyName, 14 + 21 * 13);
+   EnsurePanelLabel(pushName, 14 + 22 * 13);
+
+   // Keep Block reason fresh when spread is the blocker (spread moves every tick)
+   if(!SpreadOk())
+   {
+      string spr = SpreadTooHighReason();
+      if(StringFind(g_lastBlockReason, "spread too high") == 0)
+         g_lastBlockReason = spr; // silent refresh numbers
+      else if(g_lastBlockReason == "" || g_lastBlockReason == "-" ||
+              g_lastBlockReason == "ready")
+         SetBlockReason(spr);
+      if(StringFind(g_lastWhyNoEntry, "spread") < 0 &&
+         StringFind(g_lastBlockReason, "spread") == 0)
+         g_lastWhyNoEntry = spr;
+   }
 
    string algo = AlgoStatusText();
    string block = "Block: " + (StringLen(g_lastBlockReason) > 0 ? g_lastBlockReason : "-");
+   string spread = SpreadStatusText();
+   string why = "Why: " + (StringLen(g_lastWhyNoEntry) > 0 ? g_lastWhyNoEntry : "-");
+   string push = g_lastPushStatus;
+   if(!InpPushOnSignal && StringFind(push, "OFF") < 0)
+      push = "Push: OFF";
 
    color algoColor = (algo == "Algo: ON") ? clrLime : clrTomato;
    ObjectSetInteger(0, algoName, OBJPROP_COLOR, algoColor);
@@ -1515,6 +2034,21 @@ void RefreshAlgoBlockPanel()
       blockColor = clrOrange;
    ObjectSetInteger(0, blockName, OBJPROP_COLOR, blockColor);
    ObjectSetString(0, blockName, OBJPROP_TEXT, block);
+
+   color spreadColor = SpreadOk() ? clrSilver : clrOrange;
+   ObjectSetInteger(0, spreadName, OBJPROP_COLOR, spreadColor);
+   ObjectSetString(0, spreadName, OBJPROP_TEXT, spread);
+
+   bool whyReady = (StringFind(g_lastWhyNoEntry, "ready") == 0);
+   ObjectSetInteger(0, whyName, OBJPROP_COLOR, whyReady ? clrLime : clrGold);
+   ObjectSetString(0, whyName, OBJPROP_TEXT, why);
+
+   color pushColor = clrSilver;
+   if(StringFind(push, "OK") >= 0) pushColor = clrLime;
+   else if(StringFind(push, "FAIL") >= 0) pushColor = clrTomato;
+   else if(StringFind(push, "OFF") >= 0) pushColor = clrOrange;
+   ObjectSetInteger(0, pushName, OBJPROP_COLOR, pushColor);
+   ObjectSetString(0, pushName, OBJPROP_TEXT, push);
 }
 
 //+------------------------------------------------------------------+
@@ -1744,6 +2278,183 @@ void ManageTimeProfitClose()
 }
 
 //+------------------------------------------------------------------+
+void ManageUnlikelyTpClose()
+{
+   if(!InpUseUnlikelyTpClose)
+      return;
+   if(g_emaFastH == INVALID_HANDLE)
+      return;
+
+   int minMinutes = MathMax(1, InpUnlikelyTpMinMinutes);
+   double minProfit = MathMax(0.0, InpUnlikelyTpMinUsd);
+   double maxProgress = MathMax(0.05, MathMin(0.95, InpUnlikelyTpMaxProgress));
+   datetime now = TimeCurrent();
+
+   double emaFast = 0.0;
+   if(!GetBufferValue(g_emaFastH, 0, 1, emaFast))
+      return;
+   double close1 = iClose(_Symbol, PERIOD_CURRENT, 1);
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
+
+      datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+      if(openTime <= 0) continue;
+      int ageSec = (int)(now - openTime);
+      if(ageSec < minMinutes * 60)
+         continue;
+
+      double floating = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+      if(floating < minProfit)
+         continue;
+
+      double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+      double tp = PositionGetDouble(POSITION_TP);
+      if(tp <= 0.0)
+         continue;
+
+      long posType = PositionGetInteger(POSITION_TYPE);
+      double progress = -1.0;
+      bool momentumAgainst = false;
+
+      if(posType == POSITION_TYPE_BUY)
+      {
+         double denom = tp - openPrice;
+         if(denom <= 0.0) continue;
+         progress = (bid - openPrice) / denom;
+         momentumAgainst = (close1 < emaFast);
+      }
+      else if(posType == POSITION_TYPE_SELL)
+      {
+         double denom = openPrice - tp;
+         if(denom <= 0.0) continue;
+         progress = (openPrice - ask) / denom;
+         momentumAgainst = (close1 > emaFast);
+      }
+      else
+         continue;
+
+      if(progress >= maxProgress)
+         continue;
+      if(!momentumAgainst)
+         continue;
+
+      double vol = PositionGetDouble(POSITION_VOLUME);
+      if(!g_trade.PositionClose(ticket))
+      {
+         Print("UnlikelyTp close failed #", ticket, " ", g_trade.ResultRetcodeDescription());
+         continue;
+      }
+
+      SetBlockReason("unlikely TP close");
+      string msg = "UnlikelyTp close #" + IntegerToString((long)ticket) +
+                   " age=" + IntegerToString(ageSec / 60) + "m" +
+                   " progress=" + DoubleToString(progress * 100.0, 1) + "%" +
+                   " pnl=" + DoubleToString(floating, 2) +
+                   " lot=" + DoubleToString(vol, 2);
+      Print(msg);
+      if(InpUnlikelyTpAlert)
+         Alert("AiTradingView ", msg);
+   }
+}
+
+//+------------------------------------------------------------------+
+void ManageAdverseCutClose()
+{
+   if(!InpUseAdverseCutClose)
+      return;
+   if(g_emaFastH == INVALID_HANDLE || g_emaSlowH == INVALID_HANDLE)
+      return;
+
+   int minMinutes = MathMax(1, InpAdverseCutMinMinutes);
+   double maxUsd = InpAdverseCutMaxUsd;
+   double minSlRemain = MathMax(0.05, MathMin(0.95, InpAdverseCutMinSlRemain));
+   datetime now = TimeCurrent();
+
+   double emaFast = 0.0, emaSlow = 0.0;
+   if(!GetBufferValue(g_emaFastH, 0, 1, emaFast)) return;
+   if(!GetBufferValue(g_emaSlowH, 0, 1, emaSlow)) return;
+   double close1 = iClose(_Symbol, PERIOD_CURRENT, 1);
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+
+   bool structBear = (emaFast < emaSlow && close1 < emaFast);
+   bool structBull = (emaFast > emaSlow && close1 > emaFast);
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
+
+      datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+      if(openTime <= 0) continue;
+      int ageSec = (int)(now - openTime);
+      if(ageSec < minMinutes * 60)
+         continue;
+
+      double floating = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+      if(floating >= maxUsd)
+         continue;
+
+      double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+      double sl = PositionGetDouble(POSITION_SL);
+      if(sl <= 0.0)
+         continue;
+
+      long posType = PositionGetInteger(POSITION_TYPE);
+      double slRemain = -1.0;
+      bool against = false;
+
+      if(posType == POSITION_TYPE_BUY)
+      {
+         against = structBear;
+         double denom = openPrice - sl;
+         if(denom <= 0.0) continue;
+         slRemain = (bid - sl) / denom;
+      }
+      else if(posType == POSITION_TYPE_SELL)
+      {
+         against = structBull;
+         double denom = sl - openPrice;
+         if(denom <= 0.0) continue;
+         slRemain = (sl - ask) / denom;
+      }
+      else
+         continue;
+
+      if(!against)
+         continue;
+      if(slRemain < minSlRemain)
+         continue;
+
+      double vol = PositionGetDouble(POSITION_VOLUME);
+      if(!g_trade.PositionClose(ticket))
+      {
+         Print("AdverseCut close failed #", ticket, " ", g_trade.ResultRetcodeDescription());
+         continue;
+      }
+
+      SetBlockReason("adverse cut close");
+      string msg = "AdverseCut close #" + IntegerToString((long)ticket) +
+                   " age=" + IntegerToString(ageSec / 60) + "m" +
+                   " slRemain=" + DoubleToString(slRemain * 100.0, 1) + "%" +
+                   " pnl=" + DoubleToString(floating, 2) +
+                   " lot=" + DoubleToString(vol, 2);
+      Print(msg);
+      if(InpAdverseCutAlert)
+         Alert("AiTradingView ", msg);
+   }
+}
+
+//+------------------------------------------------------------------+
 double FitLotToMargin(double lot, const ENUM_ORDER_TYPE orderType)
 {
    double minLot  = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
@@ -1874,7 +2585,7 @@ bool RetryGuardsPass(string &reason)
    }
    if(!SpreadOk())
    {
-      reason = "spread too high";
+      reason = SpreadTooHighReason();
       return false;
    }
    if(HasOpenPositionManaged())
@@ -2075,10 +2786,12 @@ void UpdatePanelEx(const ENUM_SIGNAL signal, const string trendText,
                    const double atr, const double sl, const double tp,
                    const double swingH, const double swingL)
 {
-   string modeName = (InpTradeMode == MODE_TREND) ? "TREND" : "SCALP";
+   string modeName = "SCALP";
+   if(InpTradeMode == MODE_TREND) modeName = "TREND";
+   else if(InpTradeMode == MODE_GATES) modeName = "GATES";
    string lines[];
    ArrayResize(lines, 18);
-   lines[0]  = "AiTradingView EA v1.63";
+   lines[0]  = "AiTradingView EA v1.73";
    lines[1]  = "Mode: " + modeName + " | " + EnumToString(_Period);
    lines[2]  = "Trend: " + trendText;
    lines[3]  = "HTF: " + HtfToText(htfBias) + " (" + MtfName() + ")";
@@ -2107,9 +2820,14 @@ void UpdatePanelEx(const ENUM_SIGNAL signal, const string trendText,
                " | TimeClose: " + (InpUseTimeProfitClose
                                    ? (IntegerToString(MathMax(1, InpTimeProfitMinutes)) + "m")
                                    : "OFF") +
+               " | UTP: " + (InpUseUnlikelyTpClose
+                             ? (IntegerToString(MathMax(1, InpUnlikelyTpMinMinutes)) + "m")
+                             : "OFF") +
+               " | AdvCut: " + (InpUseAdverseCutClose ? "ON" : "OFF") +
                " | Journal: " + (InpJournalCsv ? "ON" : "OFF");
 
    int y = 14;
+   EnsurePanelFrame();
    for(int i = 0; i < ArraySize(lines); i++)
    {
       string name = g_panelPrefix + "L" + IntegerToString(i);
