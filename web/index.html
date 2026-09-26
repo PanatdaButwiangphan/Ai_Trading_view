@@ -152,6 +152,55 @@
     }
     .drop p { margin: 0.35rem 0; color: var(--muted); font-size: 0.92rem; }
     .drop strong { color: var(--ink); font-weight: 600; }
+    .api-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding: 0.85rem 1rem;
+      background: rgba(255, 252, 248, 0.5);
+      border: 1px solid var(--glass-edge);
+      border-radius: 14px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      animation: fadeUp 0.7s ease 0.04s both;
+    }
+    .api-bar label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-width: 4.5rem;
+    }
+    .api-bar input[type="url"] {
+      flex: 1 1 220px;
+      min-width: 180px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.45rem 0.65rem;
+      font-family: inherit;
+      font-size: 0.88rem;
+      background: rgba(255,255,255,0.75);
+      color: var(--ink);
+    }
+    .api-bar button {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 0.45rem 0.8rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+    .api-bar button:hover { border-color: var(--gold); }
+    .api-status {
+      width: 100%;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 0;
+    }
+    .api-status.ok { color: var(--win); }
+    .api-status.err { color: var(--loss); }
     input[type="file"] {
       margin-top: 0.85rem;
       color: var(--muted);
@@ -323,6 +372,79 @@
       color: var(--muted);
       font-weight: 500;
     }
+    .cal-cell.day-clickable {
+      cursor: pointer;
+    }
+    .cal-cell.has-note .cal-daynum::after {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-left: 4px;
+      border-radius: 50%;
+      background: var(--gold);
+      vertical-align: middle;
+    }
+    .cal-note-preview {
+      margin-top: 0.15rem;
+      font-size: 0.68rem;
+      color: var(--muted);
+      line-height: 1.25;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .day-note {
+      margin: 0.85rem 0 1.1rem;
+      padding: 0.9rem 1rem;
+      border-radius: 14px;
+      border: 1px solid rgba(180, 140, 90, 0.28);
+      background: rgba(255, 248, 240, 0.55);
+    }
+    .day-note[hidden] { display: none !important; }
+    .day-note-head { margin-bottom: 0.55rem; }
+    .day-note-title { font-weight: 600; color: var(--ink); }
+    .day-note textarea {
+      width: 100%;
+      min-height: 5.5rem;
+      resize: vertical;
+      font-family: inherit;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      border-radius: 12px;
+      border: 1px solid rgba(180, 140, 90, 0.35);
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--ink);
+      padding: 0.65rem 0.75rem;
+      box-sizing: border-box;
+    }
+    .day-note-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 0.55rem;
+    }
+    .day-note-actions button {
+      font-family: inherit;
+      font-size: 0.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(180, 140, 90, 0.35);
+      background: rgba(255, 248, 240, 0.85);
+      color: var(--ink);
+      padding: 0.35rem 0.8rem;
+      cursor: pointer;
+    }
+    .day-note-actions button:hover { border-color: var(--gold); }
+    .day-note-actions .btn-note-clear:hover {
+      border-color: var(--loss);
+      color: var(--loss);
+    }
+    .day-note-status {
+      margin-top: 0.35rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
     .day-filter {
       color: var(--muted);
       font-size: 0.9rem;
@@ -343,6 +465,72 @@
       transition: border-color 0.2s ease;
     }
     .day-filter button:hover { border-color: var(--gold); }
+
+    .table-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin: 0.4rem 0 0.8rem;
+    }
+    .table-actions button,
+    .btn-del {
+      font-family: inherit;
+      font-size: 0.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(180, 140, 90, 0.35);
+      background: rgba(255, 248, 240, 0.7);
+      color: var(--ink);
+      padding: 0.35rem 0.75rem;
+      cursor: pointer;
+    }
+    .table-actions button:hover,
+    .btn-del:hover {
+      border-color: var(--loss);
+      color: var(--loss);
+    }
+    .btn-del {
+      padding: 0.2rem 0.55rem;
+      font-size: 0.8rem;
+    }
+
+    .pager {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      margin: 0.75rem 0 1.2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .pager-btns {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .pager button {
+      font-family: inherit;
+      font-size: 0.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(180, 140, 90, 0.35);
+      background: rgba(255, 248, 240, 0.7);
+      color: var(--ink);
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+    }
+    .pager button:hover:not(:disabled) { border-color: var(--gold); }
+    .pager button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    .pager select {
+      font-family: inherit;
+      font-size: 0.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(180, 140, 90, 0.35);
+      background: rgba(255, 248, 240, 0.9);
+      color: var(--ink);
+      padding: 0.3rem 0.45rem;
+    }
 
     .table-wrap {
       overflow: auto;
@@ -570,15 +758,27 @@
     <header class="hero">
       <h1 class="brand">AiTradingView <span>Journal</span></h1>
       <p class="sub">
-        โหลดไฟล์ <code>AITV_journal.csv</code> จากโฟลเดอร์ Common Files ของ MT5
-        แล้วดูสรุปรวม + ปฏิทินกำไร/ขาดทุนรายวัน + ตารางไม้
+        โหลดอัตโนมัติจาก Google Apps Script (Webhook) หรือลากไฟล์
+        <code>AITV_journal.csv</code> / CSV ประวัติดีลจาก MT5
       </p>
     </header>
 
+    <div class="api-bar" id="apiBar">
+      <label for="apiUrl">API URL</label>
+      <input id="apiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
+      <button type="button" id="apiSave">บันทึก</button>
+      <button type="button" id="apiLoad">รีเฟรช</button>
+      <p class="api-status" id="apiStatus">ยังไม่ได้ตั้ง API — ลาก CSV ได้ตามเดิม</p>
+    </div>
+
     <div class="drop" id="drop">
-      <p><strong>ลากไฟล์ CSV มาวางที่นี่</strong> หรือเลือกไฟล์</p>
-      <p>คอลัมน์: time, symbol, side, volume, price, sl, tp, pnl, swap, commission, comment, magic, deal</p>
+      <p><strong>ลากไฟล์ CSV มาวางที่นี่</strong> หรือเลือกไฟล์ (ทางสำรอง)</p>
+      <p>รองรับ <code>AITV_journal.csv</code> และ CSV ประวัติ MT5 (Time/Symbol/Type/Profit คั่นด้วย , หรือ ;)</p>
       <input id="file" type="file" accept=".csv,text/csv" />
+    </div>
+
+    <div class="table-actions" id="tableActions">
+      <button type="button" id="clearAllTrades">ล้างไม้ทั้งหมด</button>
     </div>
 
     <div class="stats">
@@ -609,6 +809,18 @@
       <div class="cal-grid" id="calGrid"></div>
     </div>
 
+    <div class="day-note" id="dayNoteBox" hidden>
+      <div class="day-note-head">
+        <div class="day-note-title" id="dayNoteTitle">หมายเหตุวันที่</div>
+      </div>
+      <textarea id="dayNoteText" placeholder="เขียนหมายเหตุของวันนี้ เช่น จิตวิทยา, ข่าว, เหตุผลเข้าไม้..."></textarea>
+      <div class="day-note-actions">
+        <button type="button" id="dayNoteSave">บันทึกหมายเหตุ</button>
+        <button type="button" class="btn-note-clear" id="dayNoteClear">ลบหมายเหตุ</button>
+      </div>
+      <div class="day-note-status" id="dayNoteStatus"></div>
+    </div>
+
     <h2>Trades</h2>
     <div class="day-filter" id="dayFilter"></div>
     <div class="table-wrap">
@@ -624,12 +836,28 @@
             <th>TP</th>
             <th>PnL</th>
             <th>Comment</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="9" class="empty">ยังไม่มีข้อมูล — อัปโหลด CSV</td></tr>
+          <tr><td colspan="10" class="empty">ยังไม่มีข้อมูล — อัปโหลด CSV</td></tr>
         </tbody>
       </table>
+    </div>
+    <div class="pager" id="pager" hidden>
+      <div class="pager-info" id="pagerInfo">—</div>
+      <div class="pager-btns">
+        <label>ต่อหน้า
+          <select id="pageSize">
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <button type="button" id="pagePrev">‹ ก่อนหน้า</button>
+        <span id="pageLabel">1 / 1</span>
+        <button type="button" id="pageNext">ถัดไป ›</button>
+      </div>
     </div>
   </main>
 
@@ -641,6 +869,22 @@
     const calTitle = document.getElementById("calTitle");
     const calMonthNet = document.getElementById("calMonthNet");
     const dayFilter = document.getElementById("dayFilter");
+    const pager = document.getElementById("pager");
+    const pagerInfo = document.getElementById("pagerInfo");
+    const pageLabel = document.getElementById("pageLabel");
+    const pagePrev = document.getElementById("pagePrev");
+    const pageNext = document.getElementById("pageNext");
+    const pageSizeSelect = document.getElementById("pageSize");
+    const apiUrlInput = document.getElementById("apiUrl");
+    const apiStatus = document.getElementById("apiStatus");
+    const dayNoteBox = document.getElementById("dayNoteBox");
+    const dayNoteTitle = document.getElementById("dayNoteTitle");
+    const dayNoteText = document.getElementById("dayNoteText");
+    const dayNoteStatus = document.getElementById("dayNoteStatus");
+    const LS_API = "aitv_journal_api";
+    const LS_ROWS = "aitv_journal_rows";
+    const LS_NOTES = "aitv_journal_day_notes";
+    const REFRESH_MS = 5 * 60 * 1000;
 
     const MONTH_TH = [
       "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -652,24 +896,262 @@
     let viewYear = new Date().getFullYear();
     let viewMonth = new Date().getMonth();
     let selectedDayKey = "";
+    let tradePage = 1;
+    let pageSize = 20;
+    let dayNotes = {};
+
+    function loadDayNotes() {
+      try {
+        const raw = localStorage.getItem(LS_NOTES);
+        const obj = raw ? JSON.parse(raw) : {};
+        dayNotes = (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
+      } catch (e) {
+        dayNotes = {};
+      }
+    }
+
+    function persistDayNotes() {
+      try {
+        localStorage.setItem(LS_NOTES, JSON.stringify(dayNotes));
+      } catch (e) { /* ignore */ }
+    }
+
+    function getDayNote(key) {
+      return String((dayNotes && dayNotes[key]) || "").trim();
+    }
+
+    function setDayNote(key, text) {
+      const t = String(text || "").trim();
+      if (!key) return;
+      if (!t) delete dayNotes[key];
+      else dayNotes[key] = t;
+      persistDayNotes();
+    }
+
+    function renderDayNote() {
+      if (!selectedDayKey) {
+        dayNoteBox.hidden = true;
+        dayNoteText.value = "";
+        dayNoteStatus.textContent = "";
+        return;
+      }
+      dayNoteBox.hidden = false;
+      dayNoteTitle.textContent = "หมายเหตุวันที่ " + selectedDayKey;
+      dayNoteText.value = getDayNote(selectedDayKey);
+      dayNoteStatus.textContent = getDayNote(selectedDayKey)
+        ? "มีหมายเหตุบันทึกไว้แล้ว — แก้แล้วกดบันทึก"
+        : "ยังไม่มีหมายเหตุ — พิมพ์แล้วกดบันทึก";
+    }
+
+    function detectDelimiter(headerLine) {
+      const commas = (headerLine.match(/,/g) || []).length;
+      const semis = (headerLine.match(/;/g) || []).length;
+      const tabs = (headerLine.match(/\t/g) || []).length;
+      if (tabs >= commas && tabs >= semis && tabs > 0) return "\t";
+      return semis > commas ? ";" : ",";
+    }
+
+    function splitCsvLine(line, delim) {
+      const out = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+          continue;
+        }
+        if (ch === delim && !inQuotes) {
+          out.push(cur);
+          cur = "";
+          continue;
+        }
+        cur += ch;
+      }
+      out.push(cur);
+      return out;
+    }
+
+    function normHeader(h) {
+      return String(h || "")
+        .replace(/^\uFEFF/, "")
+        .trim()
+        .toLowerCase()
+        .replace(/[_\-]+/g, " ")
+        .replace(/\s+/g, " ");
+    }
+
+    function pickField(raw, aliases) {
+      for (let i = 0; i < aliases.length; i++) {
+        const key = aliases[i];
+        if (raw[key] != null && String(raw[key]).trim() !== "") {
+          return String(raw[key]).trim();
+        }
+      }
+      return "";
+    }
+
+    function normalizeSide(v) {
+      const s = String(v || "").trim().toLowerCase();
+      if (!s) return "";
+      if (s === "buy" || s === "long" || s === "0") return "buy";
+      if (s === "sell" || s === "short" || s === "1") return "sell";
+      if (s.indexOf("buy") >= 0) return "buy";
+      if (s.indexOf("sell") >= 0) return "sell";
+      return s;
+    }
+
+    function isTradeRow(row) {
+      if (!row.symbol) return false;
+      const side = String(row.side || "").toLowerCase();
+      if (!side) return true;
+      if (side === "balance" || side === "credit" || side === "charge" ||
+          side === "correction" || side === "bonus" || side === "commission") {
+        return false;
+      }
+      return true;
+    }
+
+    function findHeaderIndex(lines) {
+      const n = Math.min(lines.length, 80);
+      let best = -1;
+      let bestScore = 0;
+      for (let i = 0; i < n; i++) {
+        const low = lines[i].toLowerCase();
+        let score = 0;
+        if (low.indexOf("symbol") >= 0 || low.indexOf("item") >= 0 || low.indexOf("สัญลักษณ์") >= 0) score += 2;
+        if (low.indexOf("profit") >= 0 || low.indexOf("pnl") >= 0 || low.indexOf("กำไร") >= 0) score += 2;
+        if (low.indexOf("time") >= 0 || low.indexOf("date") >= 0 || low.indexOf("เวลา") >= 0) score += 2;
+        if (low.indexOf("volume") >= 0 || low.indexOf("lots") >= 0) score += 1;
+        if (score > bestScore) {
+          bestScore = score;
+          best = i;
+        }
+      }
+      return bestScore >= 4 ? best : (best >= 0 ? best : 0);
+    }
+
+    function uniquifyHeaders(headers) {
+      const counts = {};
+      return headers.map((h) => {
+        if (!h) return "";
+        counts[h] = (counts[h] || 0) + 1;
+        return counts[h] === 1 ? h : (h + " " + counts[h]);
+      });
+    }
+
+    function pickTimeFromRaw(raw) {
+      const preferred = pickField(raw, [
+        "time 2", "close time", "closing time", "time close", "closing date",
+        "time", "open time", "opentime", "opening time", "date", "datetime",
+        "เวลา", "วันเวลา", "เวลาปิด", "เวลาเปิด"
+      ]);
+      if (preferred) return preferred;
+
+      const keys = Object.keys(raw);
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        if ((k.indexOf("close") >= 0 || k.indexOf("closing") >= 0 || k.indexOf("ปิด") >= 0) &&
+            (k.indexOf("time") >= 0 || k.indexOf("date") >= 0 || k.indexOf("เวลา") >= 0) &&
+            raw[k]) {
+          return String(raw[k]).trim();
+        }
+      }
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        if ((k.indexOf("time") >= 0 || k.indexOf("date") >= 0 || k.indexOf("เวลา") >= 0) && raw[k]) {
+          return String(raw[k]).trim();
+        }
+      }
+      for (let i = 0; i < keys.length; i++) {
+        const v = String(raw[keys[i]] || "").trim();
+        if (v && dayKey(v)) return v;
+      }
+      return "";
+    }
 
     function parseCsv(text) {
       const lines = text.replace(/^\uFEFF/, "").trim().split(/\r?\n/);
       if (lines.length < 2) return [];
-      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const headerIdx = findHeaderIndex(lines);
+      const delim = detectDelimiter(lines[headerIdx]);
+      const headers = uniquifyHeaders(splitCsvLine(lines[headerIdx], delim).map(normHeader));
       const rows = [];
-      for (let i = 1; i < lines.length; i++) {
+      for (let i = headerIdx + 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
-        const cols = lines[i].split(",");
-        const row = {};
-        headers.forEach((h, idx) => { row[h] = (cols[idx] || "").trim(); });
+        // skip section titles inside report
+        const low = lines[i].toLowerCase();
+        if (/^(positions|orders|deals|orders history|balance|results)\b/.test(low.trim())) continue;
+
+        const cols = splitCsvLine(lines[i], delim);
+        if (cols.length < 2) continue;
+        const raw = {};
+        headers.forEach((h, idx) => {
+          if (!h) return;
+          raw[h] = (cols[idx] || "").trim();
+        });
+
+        const row = {
+          time: pickTimeFromRaw(raw),
+          symbol: pickField(raw, ["symbol", "item", "สัญลักษณ์"]),
+          side: normalizeSide(pickField(raw, ["side", "type", "direction", "entry", "deal type", "ประเภท"])),
+          volume: pickField(raw, ["volume", "lots", "vol", "lots/volume", "volume (lots)", "ปริมาณ"]),
+          price: pickField(raw, ["price 2", "price", "close price", "open price", "price / b/s", "price close", "ราคา"]),
+          sl: pickField(raw, ["sl", "s/l", "s / l", "stop loss"]),
+          tp: pickField(raw, ["tp", "t/p", "t / p", "take profit"]),
+          pnl: pickField(raw, ["pnl", "profit", "pl", "net profit", "profit/loss", "กำไร"]),
+          swap: pickField(raw, ["swap", "storage"]),
+          commission: pickField(raw, ["commission", "fee", "comm"]),
+          comment: pickField(raw, ["comment", "comments"]),
+          magic: pickField(raw, ["magic", "magic number"]),
+          deal: pickField(raw, ["deal", "ticket", "order", "position", "id"])
+        };
+
+        if (!isTradeRow(row)) continue;
         rows.push(row);
       }
-      return rows;
+      return ensureRowIds(rows);
+    }
+
+    function ensureRowIds(rows) {
+      return (rows || []).map((r, i) => {
+        const out = Object.assign({}, r);
+        if (!out._id) {
+          out._id = String(out.deal || "") + "|" + String(out.time || "") + "|" +
+                    String(out.symbol || "") + "|" + i;
+        }
+        return out;
+      });
+    }
+
+    function persistRows() {
+      try {
+        localStorage.setItem(LS_ROWS, JSON.stringify(allRows));
+      } catch (e) { /* ignore quota */ }
+    }
+
+    function loadPersistedRows() {
+      try {
+        const raw = localStorage.getItem(LS_ROWS);
+        if (!raw) return null;
+        const list = JSON.parse(raw);
+        return Array.isArray(list) ? ensureRowIds(list) : null;
+      } catch (e) {
+        return null;
+      }
     }
 
     function num(v) {
-      const n = parseFloat(v);
+      let s = String(v == null ? "" : v).trim().replace(/\s/g, "");
+      if (!s) return 0;
+      if (s.indexOf(",") >= 0 && s.indexOf(".") < 0) s = s.replace(",", ".");
+      else s = s.replace(/,/g, "");
+      const n = parseFloat(s);
       return Number.isFinite(n) ? n : 0;
     }
 
@@ -678,11 +1160,47 @@
     }
 
     function dayKey(timeStr) {
-      const s = String(timeStr || "").trim();
+      let s = String(timeStr || "").trim();
       if (!s) return "";
-      const m = s.match(/^(\d{4}[./-]\d{2}[./-]\d{2})/);
-      if (m) return m[1].replace(/[/-]/g, ".");
-      return s.slice(0, 10).replace(/[/-]/g, ".");
+      // normalize unicode separators / odd spaces
+      s = s
+        .replace(/[\u00a0\u2000-\u200b]/g, " ")
+        .replace(/[．。]/g, ".")
+        .replace(/[／]/g, "/")
+        .replace(/[－—–]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      function ymd(y, m, d) {
+        let yi = parseInt(y, 10);
+        const mi = parseInt(m, 10);
+        const di = parseInt(d, 10);
+        if (!yi || !mi || !di) return "";
+        // Buddhist calendar (Thai locale often uses 256x)
+        if (yi >= 2400) yi -= 543;
+        if (yi < 1990 || yi > 2100 || mi < 1 || mi > 12 || di < 1 || di > 31) return "";
+        return yi + "." + String(mi).padStart(2, "0") + "." + String(di).padStart(2, "0");
+      }
+
+      // YYYY-MM-DD / YYYY.MM.DD / YYYY/MM/DD (optionally followed by time)
+      let m = s.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+      if (m) return ymd(m[1], m[2], m[3]);
+
+      // DD.MM.YYYY / DD/MM/YYYY / DD-MM-YYYY
+      m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/);
+      if (m) return ymd(m[3], m[2], m[1]);
+
+      // YYYYMMDD
+      m = s.match(/^(\d{4})(\d{2})(\d{2})(?:\b|T|\s)/);
+      if (m) return ymd(m[1], m[2], m[3]);
+
+      // fallback: find first date-like token anywhere in string
+      m = s.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+      if (m) return ymd(m[1], m[2], m[3]);
+      m = s.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{4})/);
+      if (m) return ymd(m[3], m[2], m[1]);
+
+      return "";
     }
 
     function localTodayKey() {
@@ -735,7 +1253,11 @@
       if (!day) {
         todayEl.textContent = "—";
         todayEl.className = "value";
-        hintEl.textContent = "ยังไม่มีข้อมูล";
+        if (allRows.length && !dayMap.size) {
+          hintEl.textContent = "มีไม้ " + allRows.length + " แต่ไม่มีวันที่ในไฟล์";
+        } else {
+          hintEl.textContent = "ยังไม่มีข้อมูล";
+        }
         return;
       }
       todayEl.textContent = fmtSigned(day.net);
@@ -783,20 +1305,27 @@
       for (let d = 1; d <= daysInMonth; d++) {
         const key = makeDayKey(viewYear, viewMonth, d);
         const g = dayMap.get(key);
-        const classes = ["cal-cell"];
+        const note = getDayNote(key);
+        const classes = ["cal-cell", "day-clickable"];
         if (g) {
           classes.push("has-data");
           classes.push(g.net >= 0 ? "pnl-cell-pos" : "pnl-cell-neg");
         }
+        if (note) classes.push("has-note");
         if (key === todayKey) classes.push("is-today");
         if (key === selectedDayKey) classes.push("is-selected");
 
         let pnlHtml = "";
         let tradesHtml = "";
+        let noteHtml = "";
         if (g) {
           const cls = g.net >= 0 ? "pnl-pos" : "pnl-neg";
           pnlHtml = '<div class="cal-pnl ' + cls + '">' + fmtSigned(g.net) + "</div>";
           tradesHtml = '<div class="cal-trades">' + g.trades + " ไม้</div>";
+        }
+        if (note) {
+          const preview = note.length > 40 ? note.slice(0, 40) + "…" : note;
+          noteHtml = '<div class="cal-note-preview">' + preview.replace(/</g, "&lt;") + "</div>";
         }
 
         cells.push(
@@ -804,15 +1333,18 @@
             '<div class="cal-daynum">' + d + "</div>" +
             pnlHtml +
             tradesHtml +
+            noteHtml +
           "</div>"
         );
       }
       calGrid.innerHTML = cells.join("");
 
-      calGrid.querySelectorAll(".cal-cell.has-data").forEach((el) => {
+      calGrid.querySelectorAll(".cal-cell.day-clickable").forEach((el) => {
         el.addEventListener("click", () => {
           selectedDayKey = el.getAttribute("data-day") || "";
+          tradePage = 1;
           renderCalendar();
+          renderDayNote();
           renderTrades();
         });
       });
@@ -837,27 +1369,37 @@
         if (btn) {
           btn.addEventListener("click", () => {
             selectedDayKey = "";
+            tradePage = 1;
             renderCalendar();
+            renderDayNote();
             renderTrades();
           });
         }
       } else {
-        dayFilter.textContent = "คลิกวันในปฏิทินเพื่อกรองรายไม้";
+        dayFilter.textContent = "คลิกวันในปฏิทินเพื่อกรองรายไม้ / ใส่หมายเหตุ";
       }
 
       if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty">' +
+        tbody.innerHTML = '<tr><td colspan="10" class="empty">' +
           (allRows.length ? "ไม่มีไม้ในวันที่เลือก" : "ไฟล์ว่างหรือไม่มีแถวข้อมูล") +
           "</td></tr>";
+        pager.hidden = true;
         return;
       }
 
-      tbody.innerHTML = rows
-        .slice()
-        .reverse()
+      const ordered = rows.slice().reverse();
+      const total = ordered.length;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      if (tradePage > totalPages) tradePage = totalPages;
+      if (tradePage < 1) tradePage = 1;
+      const start = (tradePage - 1) * pageSize;
+      const pageRows = ordered.slice(start, start + pageSize);
+
+      tbody.innerHTML = pageRows
         .map((r) => {
           const pnl = rowPnl(r);
           const cls = pnl >= 0 ? "win" : "loss";
+          const id = String(r._id || "").replace(/"/g, "&quot;");
           return `<tr>
             <td>${r.time || ""}</td>
             <td>${r.symbol || ""}</td>
@@ -868,20 +1410,44 @@
             <td>${r.tp || ""}</td>
             <td class="${cls}">${pnl.toFixed(2)}</td>
             <td>${r.comment || ""}</td>
+            <td><button type="button" class="btn-del" data-id="${id}">ลบ</button></td>
           </tr>`;
         })
         .join("");
+
+      tbody.querySelectorAll(".btn-del").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          if (!id) return;
+          allRows = allRows.filter((r) => String(r._id) !== id);
+          render(allRows, { jumpMonth: false, keepPage: true });
+          setApiStatus("ลบไม้แล้ว เหลือ " + allRows.length + " ไม้", "ok");
+        });
+      });
+
+      pager.hidden = false;
+      const from = start + 1;
+      const to = Math.min(start + pageSize, total);
+      pagerInfo.textContent = "แสดง " + from + "–" + to + " จาก " + total + " ไม้";
+      pageLabel.textContent = tradePage + " / " + totalPages;
+      pagePrev.disabled = tradePage <= 1;
+      pageNext.disabled = tradePage >= totalPages;
+      if (pageSizeSelect) pageSizeSelect.value = String(pageSize);
     }
 
-    function render(rows) {
-      allRows = rows;
-      dayMap = buildDayMap(rows);
-      selectedDayKey = "";
+    function render(rows, opts) {
+      const jumpMonth = !(opts && opts.jumpMonth === false);
+      const keepPage = !!(opts && opts.keepPage);
+      allRows = ensureRowIds(rows || []);
+      dayMap = buildDayMap(allRows);
+      selectedDayKey = selectedDayKey && dayMap.has(selectedDayKey) ? selectedDayKey : "";
+      if (!keepPage) tradePage = 1;
+      persistRows();
 
-      const trades = rows.length;
+      const trades = allRows.length;
       let wins = 0;
       let net = 0;
-      rows.forEach((r) => {
+      allRows.forEach((r) => {
         const pnl = rowPnl(r);
         net += pnl;
         if (pnl > 0) wins++;
@@ -896,21 +1462,24 @@
       pnlEl.className = "value " + (net >= 0 ? "win" : "loss");
       document.getElementById("sAvg").textContent = avg.toFixed(2);
 
-      if (dayMap.size) {
-        const latest = Array.from(dayMap.keys()).sort().pop();
-        const p = latest.split(".");
-        if (p.length === 3) {
-          viewYear = parseInt(p[0], 10);
-          viewMonth = parseInt(p[1], 10) - 1;
+      if (jumpMonth) {
+        if (dayMap.size) {
+          const latest = Array.from(dayMap.keys()).sort().pop();
+          const p = latest.split(".");
+          if (p.length === 3) {
+            viewYear = parseInt(p[0], 10);
+            viewMonth = parseInt(p[1], 10) - 1;
+          }
+        } else {
+          const now = new Date();
+          viewYear = now.getFullYear();
+          viewMonth = now.getMonth();
         }
-      } else {
-        const now = new Date();
-        viewYear = now.getFullYear();
-        viewMonth = now.getMonth();
       }
 
       renderTodayCard();
       renderCalendar();
+      renderDayNote();
       renderTrades();
     }
 
@@ -919,14 +1488,85 @@
       const reader = new FileReader();
       reader.onload = () => {
         try {
-          render(parseCsv(String(reader.result || "")));
+          const rows = parseCsv(String(reader.result || ""));
+          render(rows);
+          const dated = rows.filter((r) => dayKey(r.time)).length;
+          if (!rows.length) {
+            setApiStatus("อ่าน CSV แล้ว แต่ไม่พบแถวเทรด", "err");
+          } else if (!dated) {
+            setApiStatus("โหลด " + rows.length + " ไม้ แต่ไม่มีวันที่ใช้ได้ — ปฏิทินจะว่าง (ตรวจคอลัมน์ Time)", "err");
+          } else {
+            setApiStatus("โหลดจาก CSV แล้ว (" + rows.length + " ไม้, มีวันที่ " + dated + " ไม้)", "ok");
+          }
         } catch (e) {
-          tbody.innerHTML = `<tr><td colspan="9" class="empty">อ่านไฟล์ไม่สำเร็จ: ${e.message}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="10" class="empty">อ่านไฟล์ไม่สำเร็จ: ${e.message}</td></tr>`;
           calGrid.innerHTML = "";
           calMonthNet.textContent = "เดือนนี้: —";
+          setApiStatus("อ่าน CSV ไม่สำเร็จ: " + e.message, "err");
         }
       };
       reader.readAsText(file);
+    }
+
+    function setApiStatus(msg, kind) {
+      apiStatus.textContent = msg;
+      apiStatus.className = "api-status" + (kind ? " " + kind : "");
+    }
+
+    function normalizeApiRows(data) {
+      let list = [];
+      if (Array.isArray(data)) list = data;
+      else if (data && Array.isArray(data.trades)) list = data.trades;
+      return ensureRowIds(list.map((r) => {
+        const raw = {};
+        Object.keys(r || {}).forEach((k) => {
+          raw[normHeader(k)] = r[k];
+        });
+        return {
+          time: pickField(raw, ["time", "close time", "closing time", "opentime", "open time", "date"]),
+          symbol: pickField(raw, ["symbol", "item"]),
+          side: normalizeSide(pickField(raw, ["side", "type", "direction", "entry"])),
+          volume: pickField(raw, ["volume", "lots", "vol"]),
+          price: pickField(raw, ["price", "close price", "open price"]),
+          sl: pickField(raw, ["sl", "s/l", "stop loss"]),
+          tp: pickField(raw, ["tp", "t/p", "take profit"]),
+          pnl: pickField(raw, ["pnl", "profit", "pl", "net profit"]),
+          swap: pickField(raw, ["swap", "storage"]),
+          commission: pickField(raw, ["commission", "fee", "comm"]),
+          comment: pickField(raw, ["comment", "comments"]),
+          magic: pickField(raw, ["magic", "magic number"]),
+          deal: pickField(raw, ["deal", "ticket", "order", "position"])
+        };
+      }).filter(isTradeRow));
+    }
+
+    function currentApiUrl() {
+      const q = new URLSearchParams(location.search).get("api");
+      if (q && q.trim()) return q.trim();
+      const saved = localStorage.getItem(LS_API);
+      return (saved || apiUrlInput.value || "").trim();
+    }
+
+    async function loadFromApi(silent) {
+      const url = currentApiUrl();
+      if (!url) {
+        if (!silent) setApiStatus("ยังไม่มี API URL — วางลิงก์ Web App แล้วกดบันทึก", "");
+        return;
+      }
+      apiUrlInput.value = url;
+      if (!silent) setApiStatus("กำลังโหลดจาก API…", "");
+      try {
+        const res = await fetch(url, { method: "GET", cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        if (data && data.ok === false) throw new Error(data.error || "API error");
+        const rows = normalizeApiRows(data);
+        render(rows);
+        const when = new Date().toLocaleTimeString();
+        setApiStatus("อัปเดตจาก API แล้ว " + rows.length + " ไม้ · " + when + " (รีเฟรชทุก 5 นาที)", "ok");
+      } catch (e) {
+        setApiStatus("โหลด API ไม่สำเร็จ: " + e.message, "err");
+      }
     }
 
     document.getElementById("calPrev").addEventListener("click", () => {
@@ -964,8 +1604,86 @@
       loadFile(f);
     });
 
-    renderCalendar();
-    dayFilter.textContent = "อัปโหลด CSV เพื่อดูกำไร/ขาดทุนบนปฏิทิน";
+    document.getElementById("apiSave").addEventListener("click", () => {
+      const url = apiUrlInput.value.trim();
+      if (!url) {
+        localStorage.removeItem(LS_API);
+        setApiStatus("ล้าง API URL แล้ว — ใช้ลาก CSV ได้", "");
+        return;
+      }
+      localStorage.setItem(LS_API, url);
+      setApiStatus("บันทึก URL แล้ว", "ok");
+      loadFromApi(false);
+    });
+    document.getElementById("apiLoad").addEventListener("click", () => loadFromApi(false));
+
+    document.getElementById("clearAllTrades").addEventListener("click", () => {
+      if (!allRows.length) {
+        setApiStatus("ไม่มีไม้ให้ล้าง", "");
+        return;
+      }
+      if (!confirm("ล้างไม้ทั้งหมดใน journal หน้านี้?")) return;
+      selectedDayKey = "";
+      tradePage = 1;
+      try { localStorage.removeItem(LS_ROWS); } catch (e) {}
+      render([]);
+      setApiStatus("ล้างไม้ทั้งหมดแล้ว", "ok");
+    });
+
+    pagePrev.addEventListener("click", () => {
+      if (tradePage <= 1) return;
+      tradePage -= 1;
+      renderTrades();
+    });
+    pageNext.addEventListener("click", () => {
+      tradePage += 1;
+      renderTrades();
+    });
+    pageSizeSelect.addEventListener("change", () => {
+      pageSize = parseInt(pageSizeSelect.value, 10) || 20;
+      tradePage = 1;
+      renderTrades();
+    });
+
+    document.getElementById("dayNoteSave").addEventListener("click", () => {
+      if (!selectedDayKey) return;
+      setDayNote(selectedDayKey, dayNoteText.value);
+      renderCalendar();
+      renderDayNote();
+      setApiStatus("บันทึกหมายเหตุวันที่ " + selectedDayKey + " แล้ว", "ok");
+    });
+    document.getElementById("dayNoteClear").addEventListener("click", () => {
+      if (!selectedDayKey) return;
+      if (!getDayNote(selectedDayKey)) {
+        dayNoteText.value = "";
+        renderDayNote();
+        return;
+      }
+      if (!confirm("ลบหมายเหตุวันที่ " + selectedDayKey + "?")) return;
+      setDayNote(selectedDayKey, "");
+      dayNoteText.value = "";
+      renderCalendar();
+      renderDayNote();
+      setApiStatus("ลบหมายเหตุวันที่ " + selectedDayKey + " แล้ว", "ok");
+    });
+
+    loadDayNotes();
+
+    const bootUrl = currentApiUrl();
+    if (bootUrl) {
+      apiUrlInput.value = bootUrl;
+      loadFromApi(false);
+      setInterval(() => loadFromApi(true), REFRESH_MS);
+    } else {
+      const saved = loadPersistedRows();
+      if (saved && saved.length) {
+        render(saved);
+        setApiStatus("โหลดไม้ที่บันทึกไว้ในเบราว์เซอร์ (" + saved.length + " ไม้)", "ok");
+      } else {
+        renderCalendar();
+        dayFilter.textContent = "ตั้ง API URL หรืออัปโหลด CSV เพื่อดูกำไร/ขาดทุนบนปฏิทิน";
+      }
+    }
   </script>
 </body>
 </html>
